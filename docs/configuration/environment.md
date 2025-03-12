@@ -567,6 +567,10 @@ Path to system-level configuration directory on Windows systems.
 
 Use to create the tracing durations file via the `tracing-durations-export` feature.
 
+### `USERPROFILE`
+
+Path to user-level configuration directory on Windows systems.
+
 ### `UV`
 
 The path to the binary that was used to invoke uv.
