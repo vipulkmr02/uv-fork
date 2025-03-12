@@ -285,7 +285,6 @@ fn tool_install_with_global_python() -> Result<()> {
     ----- stderr -----
     "###);
 
-
     // FIXME: Do we want reinstall of a tool to respect the changed global pin?
     // // Change global version
     // uv_snapshot!(context.filters(), context.python_pin().arg("3.12").arg("--global"),
