@@ -478,14 +478,14 @@ impl TestContext {
                 .map(|pattern| (pattern, "[PYTHON_DIR]/".to_string())),
         );
         filters.extend(
-            Self::path_patterns(&home_dir)
-                .into_iter()
-                .map(|pattern| (pattern, "[HOME]/".to_string())),
-        );
-        filters.extend(
             Self::path_patterns(&user_config_dir)
                 .into_iter()
                 .map(|pattern| (pattern, "[USER_CONFIG_DIR]/".to_string())),
+        );
+        filters.extend(
+            Self::path_patterns(&home_dir)
+                .into_iter()
+                .map(|pattern| (pattern, "[HOME]/".to_string())),
         );
         filters.extend(
             Self::path_patterns(&workspace_root)
@@ -617,7 +617,6 @@ impl TestContext {
             .env(EnvVars::COLUMNS, "100")
             .env(EnvVars::PATH, path)
             .env(EnvVars::HOME, self.home_dir.as_os_str())
-            .env(EnvVars::XDG_CONFIG_HOME, self.user_config_dir.as_os_str())
             .env(EnvVars::UV_PYTHON_INSTALL_DIR, "")
             // Installations are not allowed by default; see `Self::with_managed_python_dirs`
             .env(EnvVars::UV_PYTHON_DOWNLOADS, "never")

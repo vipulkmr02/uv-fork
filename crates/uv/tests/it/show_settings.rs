@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use assert_fs::prelude::*;
@@ -18,8 +18,7 @@ fn add_shared_args(mut command: Command, cwd: &Path) -> Command {
         .env(EnvVars::UV_CONCURRENT_BUILDS, "16")
         .env(EnvVars::UV_CONCURRENT_INSTALLS, "8")
         // Set an explicit `XDG_CONFIG_DIRS` to avoid loading system configuration.
-        .env(EnvVars::XDG_CONFIG_DIRS, cwd)
-        .env(EnvVars::XDG_CONFIG_HOME, cwd);
+        .env(EnvVars::XDG_CONFIG_DIRS, cwd);
 
     if cfg!(unix) {
         // Avoid locale issues in tests
@@ -2388,7 +2387,6 @@ fn resolve_top_level() -> anyhow::Result<()> {
     ignore = "Configuration tests are not yet supported on Windows"
 )]
 fn resolve_user_configuration() -> anyhow::Result<()> {
-    // Create a temporary directory to store the user configuration.
     let xdg = assert_fs::TempDir::new().expect("Failed to create temp dir");
     let uv = xdg.child("uv");
     let config = uv.child("uv.toml");

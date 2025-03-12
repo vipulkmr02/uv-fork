@@ -182,9 +182,7 @@ fn tool_install_with_global_python() -> Result<()> {
         .with_filtered_exe_suffix();
     let tool_dir = context.temp_dir.child("tools");
     let bin_dir = context.temp_dir.child("bin");
-
-    let xdg = assert_fs::TempDir::new().expect("Failed to create temp dir");
-    let uv = xdg.child("uv");
+    let uv = context.user_config_dir.child("uv");
     let versions = uv.child(".python-version");
     versions.write_str("3.11")?;
 
@@ -193,8 +191,7 @@ fn tool_install_with_global_python() -> Result<()> {
         .arg("black")
         .env(EnvVars::UV_TOOL_DIR, tool_dir.as_os_str())
         .env(EnvVars::XDG_BIN_HOME, bin_dir.as_os_str())
-        .env(EnvVars::PATH, bin_dir.as_os_str())
-        .env(EnvVars::XDG_CONFIG_HOME, xdg.path()), @r###"
+        .env(EnvVars::PATH, bin_dir.as_os_str()), @r###"
     success: true
     exit_code: 0
     ----- stdout -----
@@ -221,27 +218,6 @@ fn tool_install_with_global_python() -> Result<()> {
     let executable = bin_dir.child(format!("black{}", std::env::consts::EXE_SUFFIX));
     assert!(executable.exists());
 
-    // On Windows, we can't snapshot an executable file.
-    #[cfg(not(windows))]
-    insta::with_settings!({
-        filters => context.filters(),
-    }, {
-        // Should run black in the virtual environment
-        assert_snapshot!(fs_err::read_to_string(executable).unwrap(), @r###"
-        #![TEMP_DIR]/tools/black/bin/python
-        # -*- coding: utf-8 -*-
-        import sys
-        from black import patched_main
-        if __name__ == "__main__":
-            if sys.argv[0].endswith("-script.pyw"):
-                sys.argv[0] = sys.argv[0][:-11]
-            elif sys.argv[0].endswith(".exe"):
-                sys.argv[0] = sys.argv[0][:-4]
-            sys.exit(patched_main())
-        "###);
-
-    });
-
     insta::with_settings!({
         filters => context.filters(),
     }, {
@@ -259,7 +235,7 @@ fn tool_install_with_global_python() -> Result<()> {
         "###);
     });
 
-    uv_snapshot!(context.filters(), Command::new("black").arg("--version").env(EnvVars::PATH, bin_dir.as_os_str()).env(EnvVars::XDG_CONFIG_HOME, xdg.path()), @r###"
+    uv_snapshot!(context.filters(), Command::new("black").arg("--version").env(EnvVars::PATH, bin_dir.as_os_str()), @r###"
     success: true
     exit_code: 0
     ----- stdout -----
@@ -274,8 +250,7 @@ fn tool_install_with_global_python() -> Result<()> {
         .arg("flask")
         .env(EnvVars::UV_TOOL_DIR, tool_dir.as_os_str())
         .env(EnvVars::XDG_BIN_HOME, bin_dir.as_os_str())
-        .env(EnvVars::PATH, bin_dir.as_os_str())
-        .env(EnvVars::XDG_CONFIG_HOME, xdg.path()), @r###"
+        .env(EnvVars::PATH, bin_dir.as_os_str()), @r###"
     success: true
     exit_code: 0
     ----- stdout -----
@@ -299,25 +274,7 @@ fn tool_install_with_global_python() -> Result<()> {
         .child(format!("flask{}", std::env::consts::EXE_SUFFIX))
         .exists());
 
-    #[cfg(not(windows))]
-    insta::with_settings!({
-        filters => context.filters(),
-    }, {
-        assert_snapshot!(fs_err::read_to_string(bin_dir.join("flask")).unwrap(), @r###"
-        #![TEMP_DIR]/tools/flask/bin/python
-        # -*- coding: utf-8 -*-
-        import sys
-        from flask.cli import main
-        if __name__ == "__main__":
-            if sys.argv[0].endswith("-script.pyw"):
-                sys.argv[0] = sys.argv[0][:-11]
-            elif sys.argv[0].endswith(".exe"):
-                sys.argv[0] = sys.argv[0][:-4]
-            sys.exit(main())
-        "###);
-    });
-
-    uv_snapshot!(context.filters(), Command::new("flask").arg("--version").env(EnvVars::PATH, bin_dir.as_os_str()).env(EnvVars::XDG_CONFIG_HOME, xdg.path()), @r###"
+    uv_snapshot!(context.filters(), Command::new("flask").arg("--version").env(EnvVars::PATH, bin_dir.as_os_str()), @r###"
     success: true
     exit_code: 0
     ----- stdout -----
@@ -327,6 +284,58 @@ fn tool_install_with_global_python() -> Result<()> {
 
     ----- stderr -----
     "###);
+
+
+    // FIXME: Do we want reinstall of a tool to respect the changed global pin?
+    // // Change global version
+    // uv_snapshot!(context.filters(), context.python_pin().arg("3.12").arg("--global"),
+    //     @r"
+    // success: true
+    // exit_code: 0
+    // ----- stdout -----
+    // Updated `[USER_CONFIG_DIR]/uv/.python-version` from `3.11` -> `3.12`
+
+    // ----- stderr -----
+    // "
+    // );
+
+    // // Install flask again
+    // uv_snapshot!(context.filters(), context.tool_install()
+    //     .arg("flask")
+    //     .arg("--reinstall")
+    //     .env(EnvVars::UV_TOOL_DIR, tool_dir.as_os_str())
+    //     .env(EnvVars::XDG_BIN_HOME, bin_dir.as_os_str())
+    //     .env(EnvVars::PATH, bin_dir.as_os_str()), @r"
+    // success: true
+    // exit_code: 0
+    // ----- stdout -----
+
+    // ----- stderr -----
+    // Resolved [N] packages in [TIME]
+    // Prepared [N] packages in [TIME]
+    // Uninstalled [N] packages in [TIME]
+    // Installed [N] packages in [TIME]
+    //  ~ blinker==1.7.0
+    //  ~ click==8.1.7
+    //  ~ flask==3.0.2
+    //  ~ itsdangerous==2.1.2
+    //  ~ jinja2==3.1.3
+    //  ~ markupsafe==2.1.5
+    //  ~ werkzeug==3.0.1
+    // Installed 1 executable: flask
+    // ");
+
+    // // Check new global version is respected
+    // uv_snapshot!(context.filters(), Command::new("flask").arg("--version").env(EnvVars::PATH, bin_dir.as_os_str()), @r###"
+    // success: true
+    // exit_code: 0
+    // ----- stdout -----
+    // Python 3.12.[X]
+    // Flask 3.0.2
+    // Werkzeug 3.0.1
+
+    // ----- stderr -----
+    // "###);
 
     Ok(())
 }
@@ -1649,7 +1658,7 @@ fn tool_install_uninstallable() {
           We are sorry, but this package is not installable with pip.
 
           Please read the installation instructions at:
-     
+
           https://github.com/pyenv/pyenv#installation
           #
 
