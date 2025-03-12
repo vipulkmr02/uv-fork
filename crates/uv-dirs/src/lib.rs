@@ -98,6 +98,9 @@ fn parse_path(path: OsString) -> Option<PathBuf> {
 /// On Windows, use, e.g., C:\Users\Alice\AppData\Roaming
 /// On Linux and macOS, use `XDG_CONFIG_HOME` or $HOME/.config, e.g., /home/alice/.config.
 pub fn user_config_dir() -> Option<PathBuf> {
+    // dbg!("Base strategy picked: {:?}", etcetera::choose_base_strategy()
+    // .map(|dirs| dirs.config_dir())
+    // .ok());
     etcetera::choose_base_strategy()
         .map(|dirs| dirs.config_dir())
         .ok()

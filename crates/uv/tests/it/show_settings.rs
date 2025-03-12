@@ -3615,6 +3615,7 @@ fn invalid_conflicts() -> anyhow::Result<()> {
 #[test]
 fn valid_conflicts() -> anyhow::Result<()> {
     let context = TestContext::new("3.12");
+    let xdg = assert_fs::TempDir::new().expect("Failed to create temp dir");
     let pyproject = context.temp_dir.child("pyproject.toml");
 
     // Write in `pyproject.toml` schema.
@@ -3629,7 +3630,8 @@ fn valid_conflicts() -> anyhow::Result<()> {
             [{extra = "x1"}, {extra = "x2"}],
         ]
     "#})?;
-    uv_snapshot!(context.filters(), add_shared_args(context.lock(), context.temp_dir.path()), @r###"
+    uv_snapshot!(context.filters(), add_shared_args(context.lock(), context.temp_dir.path())
+        .env("XDG_CONFIG_HOME", xdg.path()), @r###"
     success: true
     exit_code: 0
     ----- stdout -----

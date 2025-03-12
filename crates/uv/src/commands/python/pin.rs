@@ -30,6 +30,8 @@ pub(crate) async fn pin(
     cache: &Cache,
     printer: Printer,
 ) -> Result<ExitStatus> {
+    // dbg!("APPDATA: {:?}", std::env::var("APPDATA"));
+    // dbg!("USERPROFILE: {:?}", std::env::var("USERPROFILE"));
     let workspace_cache = WorkspaceCache::default();
     let virtual_project = if no_project {
         None
@@ -46,6 +48,7 @@ pub(crate) async fn pin(
     };
 
     let version_file = if global {
+        // dbg!("global!");
         if let Some(path) = user_uv_config_dir() {
             PythonVersionFile::discover_user_config(path, &VersionFileDiscoveryOptions::default())
                 .await
@@ -53,8 +56,10 @@ pub(crate) async fn pin(
             Ok(None)
         }
     } else {
+        // dbg!("NOT global!");
         PythonVersionFile::discover(project_dir, &VersionFileDiscoveryOptions::default()).await
     };
+    // dbg!("version file: {:?}", &version_file);
 
     let Some(request) = request else {
         // Display the current pinned Python version
@@ -150,6 +155,7 @@ pub(crate) async fn pin(
         PythonVersionFile::new(project_dir.join(PYTHON_VERSION_FILENAME))
             .with_versions(vec![request])
     };
+    // dbg!("new version file: {:?}", &new);
 
     new.write().await?;
 

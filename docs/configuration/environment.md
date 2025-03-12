@@ -407,6 +407,10 @@ Used for trusted publishing via `uv publish`. Contains the oidc token url.
 
 General proxy for all network requests.
 
+### `APPDATA`
+
+Path to user-level configuration directory on Windows systems.
+
 ### `BASH_VERSION`
 
 Used to detect Bash shell usage.
@@ -569,7 +573,7 @@ Use to create the tracing durations file via the `tracing-durations-export` feat
 
 ### `USERPROFILE`
 
-Path to user-level configuration directory on Windows systems.
+
 
 ### `UV`
 

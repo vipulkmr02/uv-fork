@@ -348,6 +348,7 @@ impl EnvVars {
     pub const SYSTEMDRIVE: &'static str = "SYSTEMDRIVE";
 
     /// Path to user-level configuration directory on Windows systems.
+    pub const APPDATA: &'static str = "APPDATA";
     pub const USERPROFILE: &'static str = "USERPROFILE";
 
     /// Path to user-level configuration directory on Unix systems.

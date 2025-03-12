@@ -204,7 +204,7 @@ fn python_pin_global_if_no_local() -> Result<()> {
     let uv = context.user_config_dir.child("uv");
     uv.create_dir_all()?;
 
-    // Without arguments, we attempt to read the current pin (which does not exist yet)
+    // // Without arguments, we attempt to read the current pin (which does not exist yet)
     uv_snapshot!(context.filters(), context.python_pin(), @r###"
     success: false
     exit_code: 2
@@ -219,7 +219,7 @@ fn python_pin_global_if_no_local() -> Result<()> {
     success: true
     exit_code: 0
     ----- stdout -----
-    Pinned `[USER_CONFIG_DIR]/uv/.python-version` to `3.11`
+    Pinned `[UV_USER_CONFIG_DIR]/.python-version` to `3.11`
 
     ----- stderr -----
     ");
@@ -248,7 +248,7 @@ fn python_pin_global_use_local_if_available() -> Result<()> {
     success: true
     exit_code: 0
     ----- stdout -----
-    Pinned `[USER_CONFIG_DIR]/uv/.python-version` to `3.12`
+    Pinned `[UV_USER_CONFIG_DIR]/.python-version` to `3.12`
 
     ----- stderr -----
     ");

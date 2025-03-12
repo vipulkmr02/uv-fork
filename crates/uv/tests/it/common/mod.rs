@@ -358,7 +358,11 @@ impl TestContext {
         let home_dir = ChildPath::new(root.path()).child("home");
         fs_err::create_dir_all(&home_dir).expect("Failed to create test home directory");
 
-        let user_config_dir = ChildPath::new(home_dir.path()).child(".config");
+        let user_config_dir = if cfg!(windows) {
+            ChildPath::new(home_dir.path())
+        } else {
+            ChildPath::new(home_dir.path()).child(".config")
+        };
         fs_err::create_dir_all(&user_config_dir)
             .expect("Failed to create test user config directory");
 
@@ -476,6 +480,13 @@ impl TestContext {
             Self::path_patterns(&python_dir)
                 .into_iter()
                 .map(|pattern| (pattern, "[PYTHON_DIR]/".to_string())),
+        );
+        let mut uv_user_config_dir = PathBuf::from(user_config_dir.path());
+        uv_user_config_dir.push("uv");
+        filters.extend(
+            Self::path_patterns(&uv_user_config_dir)
+                .into_iter()
+                .map(|pattern| (pattern, "[UV_USER_CONFIG_DIR]/".to_string())),
         );
         filters.extend(
             Self::path_patterns(&user_config_dir)
@@ -617,6 +628,7 @@ impl TestContext {
             .env(EnvVars::COLUMNS, "100")
             .env(EnvVars::PATH, path)
             .env(EnvVars::HOME, self.home_dir.as_os_str())
+            .env(EnvVars::APPDATA, self.home_dir.as_os_str())
             .env(EnvVars::USERPROFILE, self.home_dir.as_os_str())
             .env(EnvVars::UV_PYTHON_INSTALL_DIR, "")
             // Installations are not allowed by default; see `Self::with_managed_python_dirs`

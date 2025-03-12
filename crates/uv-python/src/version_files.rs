@@ -69,6 +69,7 @@ impl PythonVersionFile {
         working_directory: impl AsRef<Path>,
         options: &DiscoveryOptions<'_>,
     ) -> Result<Option<Self>, std::io::Error> {
+        // dbg!("discover working_directory: {:?}", working_directory.as_ref());
         let Some(path) = Self::find_nearest(working_directory, options) else {
             // Not found in directory or its ancestors. Looking in user-level config.
             return Ok(match user_uv_config_dir() {
@@ -88,6 +89,7 @@ impl PythonVersionFile {
         }
 
         // Uses `try_from_path` instead of `from_path` to avoid TOCTOU failures.
+        // dbg!("discover!");
         Self::try_from_path(path).await
     }
 
@@ -95,12 +97,14 @@ impl PythonVersionFile {
         user_config_working_directory: impl AsRef<Path>,
         options: &DiscoveryOptions<'_>,
     ) -> Result<Option<Self>, std::io::Error> {
+        // dbg!("discover user_config_working_directory: {:?}", user_config_working_directory.as_ref());
         if !options.no_config {
             if let Some(path) =
                 Self::find_in_directory(user_config_working_directory.as_ref(), options)
                     .into_iter()
                     .find(|path| path.is_file())
             {
+                // dbg!("discover_user_config!");
                 return Self::try_from_path(path).await;
             }
         }
@@ -137,6 +141,7 @@ impl PythonVersionFile {
     ///
     /// If the file does not exist, `Ok(None)` is returned.
     pub async fn try_from_path(path: PathBuf) -> Result<Option<Self>, std::io::Error> {
+        // dbg!("try_from_path: path arg: {:?}", &path);
         match fs::tokio::read_to_string(&path).await {
             Ok(content) => {
                 debug!(
@@ -153,6 +158,7 @@ impl PythonVersionFile {
                     .map(ToString::to_string)
                     .map(|version| PythonRequest::parse(&version))
                     .collect();
+                // dbg!("try_from_path: {:?}, versions: {:?}", &path, &versions);
                 Ok(Some(Self { path, versions }))
             }
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(None),

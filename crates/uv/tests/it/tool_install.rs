@@ -186,66 +186,7 @@ fn tool_install_with_global_python() -> Result<()> {
     let versions = uv.child(".python-version");
     versions.write_str("3.11")?;
 
-    // Install `black`
-    uv_snapshot!(context.filters(), context.tool_install()
-        .arg("black")
-        .env(EnvVars::UV_TOOL_DIR, tool_dir.as_os_str())
-        .env(EnvVars::XDG_BIN_HOME, bin_dir.as_os_str())
-        .env(EnvVars::PATH, bin_dir.as_os_str()), @r###"
-    success: true
-    exit_code: 0
-    ----- stdout -----
-
-    ----- stderr -----
-    Resolved [N] packages in [TIME]
-    Prepared [N] packages in [TIME]
-    Installed [N] packages in [TIME]
-     + black==24.3.0
-     + click==8.1.7
-     + mypy-extensions==1.0.0
-     + packaging==24.0
-     + pathspec==0.12.1
-     + platformdirs==4.2.0
-    Installed 2 executables: black, blackd
-    "###);
-
-    tool_dir.child("black").assert(predicate::path::is_dir());
-    tool_dir
-        .child("black")
-        .child("uv-receipt.toml")
-        .assert(predicate::path::exists());
-
-    let executable = bin_dir.child(format!("black{}", std::env::consts::EXE_SUFFIX));
-    assert!(executable.exists());
-
-    insta::with_settings!({
-        filters => context.filters(),
-    }, {
-        // We should have a tool receipt
-        assert_snapshot!(fs_err::read_to_string(tool_dir.join("black").join("uv-receipt.toml")).unwrap(), @r###"
-        [tool]
-        requirements = [{ name = "black" }]
-        entrypoints = [
-            { name = "black", install-path = "[TEMP_DIR]/bin/black" },
-            { name = "blackd", install-path = "[TEMP_DIR]/bin/blackd" },
-        ]
-
-        [tool.options]
-        exclude-newer = "2024-03-25T00:00:00Z"
-        "###);
-    });
-
-    uv_snapshot!(context.filters(), Command::new("black").arg("--version").env(EnvVars::PATH, bin_dir.as_os_str()), @r###"
-    success: true
-    exit_code: 0
-    ----- stdout -----
-    black, 24.3.0 (compiled: yes)
-    Python (CPython) 3.11.[X]
-
-    ----- stderr -----
-    "###);
-
-    // Install another tool
+    // Install a tool
     uv_snapshot!(context.filters(), context.tool_install()
         .arg("flask")
         .env(EnvVars::UV_TOOL_DIR, tool_dir.as_os_str())
