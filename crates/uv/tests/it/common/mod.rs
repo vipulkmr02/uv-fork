@@ -919,6 +919,17 @@ impl TestContext {
         command
     }
 
+    /// Create a `uv python upgrade` command with options shared across scenarios.
+    pub fn python_upgrade(&self) -> Command {
+        let mut command = self.new_command();
+        self.add_shared_options(&mut command, true);
+        command
+            .arg("python")
+            .arg("upgrade")
+            .current_dir(&self.temp_dir);
+        command
+    }
+
     /// Create a `uv python pin` command with options shared across scenarios.
     pub fn python_pin(&self) -> Command {
         let mut command = self.new_command();
@@ -1241,7 +1252,7 @@ impl TestContext {
 
     /// Creates a new `Command` that is intended to be suitable for use in
     /// all tests.
-    fn new_command(&self) -> Command {
+    pub fn new_command(&self) -> Command {
         self.new_command_with(&get_bin())
     }
 

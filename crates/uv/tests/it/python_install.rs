@@ -7,6 +7,7 @@ use assert_fs::{
 };
 use predicates::prelude::predicate;
 use tracing::debug;
+
 use uv_fs::Simplified;
 use uv_static::EnvVars;
 
@@ -1369,4 +1370,216 @@ fn python_install_cached() {
     error: Failed to install cpython-3.12.10-[PLATFORM]
       Caused by: An offline Python installation was requested, but cpython-3.12.10[DATE]-[PLATFORM].tar.gz) is missing in python-cache
     ");
+}
+
+// A virtual environment should track the latest patch version installed.
+#[test]
+fn install_transparent_patch_upgrade_uv_venv() {
+    let context = TestContext::new_with_versions(&["3.13"])
+        .with_filtered_python_keys()
+        .with_filtered_exe_suffix()
+        .with_managed_python_dirs()
+        .with_filtered_python_names()
+        .with_filtered_python_install_bin();
+
+    uv_snapshot!(context.filters(), context.python_install().arg("3.12.9"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.12.9 in [TIME]
+     + cpython-3.12.9-[PLATFORM]
+    "
+    );
+
+    uv_snapshot!(context.filters(), context.venv().arg("-p").arg("3.12")
+        .arg(context.venv.as_os_str()), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Using CPython 3.12.9
+    Creating virtual environment at: .venv
+    Activate with: source .venv/[BIN]/activate
+    "
+    );
+
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.12.9
+
+    ----- stderr -----
+    "
+    );
+
+    uv_snapshot!(context.filters(), context.python_install().arg("3.12.10"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.12.10 in [TIME]
+     + cpython-3.12.10-[PLATFORM]
+    "
+    );
+
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.12.10
+
+    ----- stderr -----
+    "
+    );
+}
+
+// Virtual environments only record minor versions. `uv venv -p 3.x.y` will
+// not prevent a virtual environment from tracking the latest patch version
+// installed.
+#[test]
+fn install_transparent_upgrade_despite_venv_patch_specification() {
+    let context = TestContext::new_with_versions(&["3.13"])
+        .with_filtered_python_keys()
+        .with_filtered_exe_suffix()
+        .with_managed_python_dirs()
+        .with_filtered_python_install_bin();
+
+    uv_snapshot!(context.filters(), context.python_install().arg("3.12.9"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.12.9 in [TIME]
+     + cpython-3.12.9-[PLATFORM]
+    "
+    );
+
+    // Create a virtual environment with a patch version
+    uv_snapshot!(context.filters(), context.venv().arg("-p").arg("3.12.9")
+        .arg(context.venv.as_os_str()), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    warning: Virtual environments only record Python minor versions. You could use `uv python pin python3.12.9` to pin the full version
+    Using CPython 3.12.9
+    Creating virtual environment at: .venv
+    Activate with: source .venv/[BIN]/activate
+    "
+    );
+
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.12.9
+
+    ----- stderr -----
+    "
+    );
+
+    uv_snapshot!(context.filters(), context.python_install().arg("3.12.10"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.12.10 in [TIME]
+     + cpython-3.12.10-[PLATFORM]
+    "
+    );
+
+    // The virtual environment Python version is transparently upgraded.
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.12.10
+
+    ----- stderr -----
+    "
+    );
+}
+
+// A virtual environment created using the `venv` module should track
+// the latest patch version installed.
+#[test]
+fn install_transparent_patch_upgrade_venv_module() {
+    let context = TestContext::new_with_versions(&[])
+        .with_filtered_python_keys()
+        .with_filtered_exe_suffix()
+        .with_managed_python_dirs()
+        .with_filtered_python_names()
+        .with_filtered_python_install_bin();
+
+    let bin_dir = context.temp_dir.child("bin");
+
+    uv_snapshot!(context.filters(), context.python_install().arg("3.12.9"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.12.9 in [TIME]
+     + cpython-3.12.9-[PLATFORM]
+    "
+    );
+
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.12.9
+
+    ----- stderr -----
+    "
+    );
+
+    // Set up a virtual environment using venv module
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("-m").arg("venv").arg(context.venv.as_os_str()).arg("--without-pip")
+        .env(EnvVars::PATH, bin_dir.as_os_str()), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    ");
+
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.12.9
+
+    ----- stderr -----
+    "
+    );
+
+    uv_snapshot!(context.filters(), context.python_install().arg("3.12.10"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.12.10 in [TIME]
+     + cpython-3.12.10-[PLATFORM]
+    "
+    );
+
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.12.10
+
+    ----- stderr -----
+    "
+    );
 }

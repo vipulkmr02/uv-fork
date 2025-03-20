@@ -3,7 +3,7 @@
 use std::env::consts::EXE_SUFFIX;
 use std::io;
 use std::io::{BufWriter, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use fs_err as fs;
 use fs_err::File;
@@ -12,6 +12,7 @@ use tracing::debug;
 
 use uv_fs::{cachedir, Simplified, CWD};
 use uv_pypi_types::Scheme;
+use uv_python::managed::create_bin_link;
 use uv_python::{Interpreter, VirtualEnvironment};
 use uv_shell::escape_posix_for_single_quotes;
 use uv_version::version;
@@ -143,13 +144,25 @@ pub(crate) fn create(
     // Create a `.gitignore` file to ignore all files in the venv.
     fs::write(location.join(".gitignore"), "*")?;
 
+    let executable_target = if interpreter.is_managed() {
+        interpreter.symlink_path_from_base_python(base_python.clone())?
+    } else {
+        base_python.clone()
+    };
+
     // Per PEP 405, the Python `home` is the parent directory of the interpreter.
-    let python_home = base_python.parent().ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::NotFound,
-            "The Python interpreter needs to have a parent directory",
-        )
-    })?;
+    // For managed interpreters, this `home` value will include a symlink directory
+    // on Unix or junction on Windows to enable transparent Python patch upgrades.
+    let python_home = executable_target
+        .parent()
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                "The Python interpreter needs to have a parent directory",
+            )
+        })?
+        .to_path_buf();
+    let python_home = python_home.as_path();
 
     // Different names for the python interpreter
     fs::create_dir_all(&scripts)?;
@@ -157,7 +170,7 @@ pub(crate) fn create(
 
     #[cfg(unix)]
     {
-        uv_fs::replace_symlink(&base_python, &executable)?;
+        uv_fs::replace_symlink(&executable_target, &executable)?;
         uv_fs::replace_symlink(
             "python",
             scripts.join(format!("python{}", interpreter.python_major())),
@@ -184,90 +197,43 @@ pub(crate) fn create(
         }
     }
 
-    // No symlinking on Windows, at least not on a regular non-dev non-admin Windows install.
+    // On Windows, we use trampolines that point to our junction-containing executable link.
+    // TODO(john): I think we can do this directly with junctions.
     if cfg!(windows) {
-        copy_launcher_windows(
-            WindowsExecutable::Python,
+        create_venv_trampoline_windows(
+            &executable_target,
+            &[WindowsExecutable::Python],
             interpreter,
-            &base_python,
             &scripts,
-            python_home,
         )?;
 
         if interpreter.markers().implementation_name() == "graalpy" {
-            copy_launcher_windows(
-                WindowsExecutable::GraalPy,
+            create_venv_trampoline_windows(
+                &executable_target,
+                &[
+                    WindowsExecutable::GraalPy,
+                    WindowsExecutable::PythonMajor,
+                    WindowsExecutable::Pythonw,
+                ],
                 interpreter,
-                &base_python,
                 &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PythonMajor,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
-            )?;
-        } else {
-            copy_launcher_windows(
-                WindowsExecutable::Pythonw,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
             )?;
         }
 
         if interpreter.markers().implementation_name() == "pypy" {
-            copy_launcher_windows(
-                WindowsExecutable::PythonMajor,
+            create_venv_trampoline_windows(
+                &executable_target,
+                &[
+                    WindowsExecutable::PythonMajor,
+                    WindowsExecutable::PythonMajorMinor,
+                    WindowsExecutable::PyPy,
+                    WindowsExecutable::PyPyMajor,
+                    WindowsExecutable::PyPyMajorMinor,
+                    WindowsExecutable::PyPyw,
+                    WindowsExecutable::PyPyMajorMinorw,
+                ],
                 interpreter,
-                &base_python,
                 &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PythonMajorMinor,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PyPy,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PyPyMajor,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PyPyMajorMinor,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PyPyw,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PyPyMajorMinorw,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
             )?;
         }
     }
@@ -335,7 +301,7 @@ pub(crate) fn create(
         ("uv".to_string(), version().to_string()),
         (
             "version_info".to_string(),
-            interpreter.markers().python_full_version().string.clone(),
+            interpreter.markers().python_version().string.clone(),
         ),
         (
             "include-system-site-packages".to_string(),
@@ -473,147 +439,17 @@ impl WindowsExecutable {
             WindowsExecutable::GraalPy => String::from("graalpy.exe"),
         }
     }
-
-    /// The name of the launcher shim.
-    fn launcher(self, interpreter: &Interpreter) -> &'static str {
-        match self {
-            Self::Python | Self::PythonMajor | Self::PythonMajorMinor
-                if interpreter.gil_disabled() =>
-            {
-                "venvlaunchert.exe"
-            }
-            Self::Python | Self::PythonMajor | Self::PythonMajorMinor => "venvlauncher.exe",
-            Self::Pythonw if interpreter.gil_disabled() => "venvwlaunchert.exe",
-            Self::Pythonw => "venvwlauncher.exe",
-            // From 3.13 on these should replace the `python.exe` and `pythonw.exe` shims.
-            // These are not relevant as of now for PyPy as it doesn't yet support Python 3.13.
-            Self::PyPy | Self::PyPyMajor | Self::PyPyMajorMinor => "venvlauncher.exe",
-            Self::PyPyw | Self::PyPyMajorMinorw => "venvwlauncher.exe",
-            WindowsExecutable::GraalPy => "venvlauncher.exe",
-        }
-    }
 }
 
-/// <https://github.com/python/cpython/blob/d457345bbc6414db0443819290b04a9a4333313d/Lib/venv/__init__.py#L261-L267>
-/// <https://github.com/pypa/virtualenv/blob/d9fdf48d69f0d0ca56140cf0381edbb5d6fe09f5/src/virtualenv/create/via_global_ref/builtin/cpython/cpython3.py#L78-L83>
-///
-/// There's two kinds of applications on windows: Those that allocate a console (python.exe)
-/// and those that don't because they use window(s) (pythonw.exe).
-fn copy_launcher_windows(
-    executable: WindowsExecutable,
+fn create_venv_trampoline_windows(
+    executable: &Path,
+    executable_kinds: &[WindowsExecutable],
     interpreter: &Interpreter,
-    base_python: &Path,
     scripts: &Path,
-    python_home: &Path,
 ) -> Result<(), Error> {
-    // First priority: the `python.exe` and `pythonw.exe` shims.
-    let shim = interpreter
-        .stdlib()
-        .join("venv")
-        .join("scripts")
-        .join("nt")
-        .join(executable.exe(interpreter));
-    match fs_err::copy(shim, scripts.join(executable.exe(interpreter))) {
-        Ok(_) => return Ok(()),
-        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
-        Err(err) => {
-            return Err(err.into());
-        }
+    for kind in executable_kinds {
+        let target = scripts.join(kind.exe(interpreter));
+        create_bin_link(target.as_path(), PathBuf::from(executable)).map_err(Error::Python)?;
     }
-
-    // Second priority: the `venvlauncher.exe` and `venvwlauncher.exe` shims.
-    // These are equivalent to the `python.exe` and `pythonw.exe` shims, which were
-    // renamed in Python 3.13.
-    let shim = interpreter
-        .stdlib()
-        .join("venv")
-        .join("scripts")
-        .join("nt")
-        .join(executable.launcher(interpreter));
-    match fs_err::copy(shim, scripts.join(executable.exe(interpreter))) {
-        Ok(_) => return Ok(()),
-        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
-        Err(err) => {
-            return Err(err.into());
-        }
-    }
-
-    // Third priority: on Conda at least, we can look for the launcher shim next to
-    // the Python executable itself.
-    let shim = base_python.with_file_name(executable.launcher(interpreter));
-    match fs_err::copy(shim, scripts.join(executable.exe(interpreter))) {
-        Ok(_) => return Ok(()),
-        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
-        Err(err) => {
-            return Err(err.into());
-        }
-    }
-
-    // Fourth priority: if the launcher shim doesn't exist, assume this is
-    // an embedded Python. Copy the Python executable itself, along with
-    // the DLLs, `.pyd` files, and `.zip` files in the same directory.
-    match fs_err::copy(
-        base_python.with_file_name(executable.exe(interpreter)),
-        scripts.join(executable.exe(interpreter)),
-    ) {
-        Ok(_) => {
-            // Copy `.dll` and `.pyd` files from the top-level, and from the
-            // `DLLs` subdirectory (if it exists).
-            for directory in [
-                python_home,
-                interpreter.sys_base_prefix().join("DLLs").as_path(),
-            ] {
-                let entries = match fs_err::read_dir(directory) {
-                    Ok(read_dir) => read_dir,
-                    Err(err) if err.kind() == io::ErrorKind::NotFound => {
-                        continue;
-                    }
-                    Err(err) => {
-                        return Err(err.into());
-                    }
-                };
-                for entry in entries {
-                    let entry = entry?;
-                    let path = entry.path();
-                    if path.extension().is_some_and(|ext| {
-                        ext.eq_ignore_ascii_case("dll") || ext.eq_ignore_ascii_case("pyd")
-                    }) {
-                        if let Some(file_name) = path.file_name() {
-                            fs_err::copy(&path, scripts.join(file_name))?;
-                        }
-                    }
-                }
-            }
-
-            // Copy `.zip` files from the top-level.
-            match fs_err::read_dir(python_home) {
-                Ok(entries) => {
-                    for entry in entries {
-                        let entry = entry?;
-                        let path = entry.path();
-                        if path
-                            .extension()
-                            .is_some_and(|ext| ext.eq_ignore_ascii_case("zip"))
-                        {
-                            if let Some(file_name) = path.file_name() {
-                                fs_err::copy(&path, scripts.join(file_name))?;
-                            }
-                        }
-                    }
-                }
-                Err(err) if err.kind() == io::ErrorKind::NotFound => {}
-                Err(err) => {
-                    return Err(err.into());
-                }
-            }
-
-            return Ok(());
-        }
-        Err(err) if err.kind() == io::ErrorKind::NotFound => {}
-        Err(err) => {
-            return Err(err.into());
-        }
-    }
-
-    Err(Error::NotFound(base_python.user_display().to_string()))
+    Ok(())
 }

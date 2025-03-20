@@ -30,6 +30,7 @@ use uv_configuration::min_stack_size;
 use uv_fs::{Simplified, CWD};
 use uv_pep508::VersionOrUrl;
 use uv_pypi_types::{ParsedDirectoryUrl, ParsedUrl};
+use uv_python::{PythonRequest, VersionRequest};
 use uv_requirements::RequirementsSource;
 use uv_requirements_txt::RequirementsTxtRequirement;
 use uv_scripts::{Pep723Error, Pep723Item, Pep723ItemRef, Pep723Metadata, Pep723Script};
@@ -970,10 +971,19 @@ async fn run(mut cli: Cli) -> Result<ExitStatus> {
                 }
             });
 
+            let python_request: Option<PythonRequest> =
+                args.settings.python.as_deref().map(PythonRequest::parse);
+
+            if let Some(PythonRequest::Version(ref version_request)) = python_request {
+                if let VersionRequest::MajorMinorPatch(..) = version_request {
+                    warn_user_once!("Virtual environments only record Python minor versions. You could use `uv python pin python{version_request}` to pin the full version");
+                }
+            }
+
             commands::venv(
                 &project_dir,
                 args.path,
-                args.settings.python.as_deref(),
+                python_request,
                 args.settings.install_mirrors,
                 globals.python_preference,
                 globals.python_downloads,
@@ -1347,12 +1357,43 @@ async fn run(mut cli: Cli) -> Result<ExitStatus> {
             // Resolve the settings from the command-line arguments and workspace configuration.
             let args = settings::PythonInstallSettings::resolve(args, filesystem);
             show_settings!(args);
+            // TODO(john): If we later want to support `--upgrade`, we need to replace this.
+            let upgrade = false;
 
             commands::python_install(
                 &project_dir,
                 args.install_dir,
                 args.targets,
                 args.reinstall,
+                upgrade,
+                args.force,
+                args.python_install_mirror,
+                args.pypy_install_mirror,
+                args.python_downloads_json_url,
+                globals.network_settings,
+                args.default,
+                globals.python_downloads,
+                cli.top_level.no_config,
+                globals.preview,
+                printer,
+            )
+            .await
+        }
+        Commands::Python(PythonNamespace {
+            command: PythonCommand::Upgrade(args),
+        }) => {
+            // Resolve the settings from the command-line arguments and workspace configuration.
+            let args = settings::PythonUpgradeSettings::resolve(args, filesystem);
+            show_settings!(args);
+            let reinstall = false;
+            let upgrade = true;
+
+            commands::python_install(
+                &project_dir,
+                args.install_dir,
+                args.targets,
+                reinstall,
+                upgrade,
                 args.force,
                 args.python_install_mirror,
                 args.pypy_install_mirror,

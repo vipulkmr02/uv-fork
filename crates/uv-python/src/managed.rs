@@ -11,7 +11,7 @@ use same_file::is_same_file;
 use thiserror::Error;
 use tracing::{debug, warn};
 
-use uv_fs::{symlink_or_copy_file, LockedFile, Simplified};
+use uv_fs::{replace_symlink, symlink_or_copy_file, LockedFile, Simplified};
 use uv_state::{StateBucket, StateStore};
 use uv_static::EnvVars;
 use uv_trampoline_builder::{windows_python_launcher, Launcher};
@@ -60,6 +60,13 @@ pub enum Error {
     },
     #[error("Failed to create Python executable link at {} from {}", to.user_display(), from.user_display())]
     LinkExecutable {
+        from: PathBuf,
+        to: PathBuf,
+        #[source]
+        err: io::Error,
+    },
+    #[error("Failed to create Python executable link directory at {} from {}", to.user_display(), from.user_display())]
+    ExecutableLinkDirectory {
         from: PathBuf,
         to: PathBuf,
         #[source]
@@ -504,6 +511,36 @@ impl ManagedPythonInstallation {
         Ok(())
     }
 
+    /// Ensure the environment contains the canonical Python executable names.
+    pub fn ensure_minor_version_link(&self) -> Result<(), Error> {
+        let python = self.executable(false);
+        let version_name = format!("python{}.{}", self.key.major, self.key.minor);
+        let link_dir = self.path().with_file_name(format!("{}-dir", &version_name));
+
+        match replace_symlink(self.path(), &link_dir) {
+            Ok(()) => {
+                debug!(
+                    "Created link {} -> {}",
+                    link_dir.user_display(),
+                    python.user_display(),
+                );
+            }
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                return Err(Error::MissingExecutable(python.clone()))
+            }
+            Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(err) => {
+                return Err(Error::ExecutableLinkDirectory {
+                    from: link_dir,
+                    to: python,
+                    err,
+                })
+            }
+        }
+
+        Ok(())
+    }
+
     /// Ensure the environment is marked as externally managed with the
     /// standard `EXTERNALLY-MANAGED` file.
     pub fn ensure_externally_managed(&self) -> Result<(), Error> {
@@ -572,46 +609,7 @@ impl ManagedPythonInstallation {
     ///
     /// If the file already exists at the target path, an error will be returned.
     pub fn create_bin_link(&self, target: &Path) -> Result<(), Error> {
-        let python = self.executable(false);
-
-        let bin = target.parent().ok_or(Error::NoExecutableDirectory)?;
-        fs_err::create_dir_all(bin).map_err(|err| Error::ExecutableDirectory {
-            to: bin.to_path_buf(),
-            err,
-        })?;
-
-        if cfg!(unix) {
-            // Note this will never copy on Unix — we use it here to allow compilation on Windows
-            match symlink_or_copy_file(&python, target) {
-                Ok(()) => Ok(()),
-                Err(err) if err.kind() == io::ErrorKind::NotFound => {
-                    Err(Error::MissingExecutable(python.clone()))
-                }
-                Err(err) => Err(Error::LinkExecutable {
-                    from: python,
-                    to: target.to_path_buf(),
-                    err,
-                }),
-            }
-        } else if cfg!(windows) {
-            // TODO(zanieb): Install GUI launchers as well
-            let launcher = windows_python_launcher(&python, false)?;
-
-            // OK to use `std::fs` here, `fs_err` does not support `File::create_new` and we attach
-            // error context anyway
-            #[allow(clippy::disallowed_types)]
-            {
-                std::fs::File::create_new(target)
-                    .and_then(|mut file| file.write_all(launcher.as_ref()))
-                    .map_err(|err| Error::LinkExecutable {
-                        from: python,
-                        to: target.to_path_buf(),
-                        err,
-                    })
-            }
-        } else {
-            unimplemented!("Only Windows and Unix systems are supported.")
-        }
+        create_bin_link(target, self.executable(false))
     }
 
     /// Returns `true` if the path is a link to this installation's binary, e.g., as created by
@@ -667,6 +665,50 @@ impl ManagedPythonInstallation {
 
     pub fn sha256(&self) -> Option<&'static str> {
         self.sha256
+    }
+}
+
+/// Create a link to the managed Python executable.
+///
+/// If the file already exists at the target path, an error will be returned.
+pub fn create_bin_link(target: &Path, executable: PathBuf) -> Result<(), Error> {
+    let bin = target.parent().ok_or(Error::NoExecutableDirectory)?;
+    fs_err::create_dir_all(bin).map_err(|err| Error::ExecutableDirectory {
+        to: bin.to_path_buf(),
+        err,
+    })?;
+
+    if cfg!(unix) {
+        // Note this will never copy on Unix — we use it here to allow compilation on Windows
+        match symlink_or_copy_file(&executable, target) {
+            Ok(()) => Ok(()),
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                Err(Error::MissingExecutable(executable.clone()))
+            }
+            Err(err) => Err(Error::LinkExecutable {
+                from: executable,
+                to: target.to_path_buf(),
+                err,
+            }),
+        }
+    } else if cfg!(windows) {
+        // TODO(zanieb): Install GUI launchers as well
+        let launcher = windows_python_launcher(&executable, false)?;
+
+        // OK to use `std::fs` here, `fs_err` does not support `File::create_new` and we attach
+        // error context anyway
+        #[allow(clippy::disallowed_types)]
+        {
+            std::fs::File::create_new(target)
+                .and_then(|mut file| file.write_all(launcher.as_ref()))
+                .map_err(|err| Error::LinkExecutable {
+                    from: executable,
+                    to: target.to_path_buf(),
+                    err,
+                })
+        }
+    } else {
+        unimplemented!("Only Windows and Unix systems are supported.")
     }
 }
 
