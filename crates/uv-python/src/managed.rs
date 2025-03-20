@@ -11,7 +11,7 @@ use same_file::is_same_file;
 use thiserror::Error;
 use tracing::{debug, warn};
 
-use uv_fs::{symlink_or_copy_file, LockedFile, Simplified};
+use uv_fs::{replace_symlink, symlink_or_copy_file, LockedFile, Simplified};
 use uv_state::{StateBucket, StateStore};
 use uv_static::EnvVars;
 use uv_trampoline_builder::{windows_python_launcher, Launcher};
@@ -504,6 +504,66 @@ impl ManagedPythonInstallation {
         Ok(())
     }
 
+    /// Ensure the environment contains the canonical Python executable names.
+    pub fn ensure_minor_version_link(&self) -> Result<(), Error> {
+        // if cfg!(unix) {
+            let python = self.executable(false);
+            let version_name = format!("python{}.{}", self.key.major, self.key.minor);
+            let python_link = self.path().with_file_name(&version_name);
+            let link_dir = self.path().with_file_name(format!("{}-dir", &version_name));
+
+            match replace_symlink(self.path(), &link_dir) {
+                Ok(()) => {
+                    dbg!("Created minor directory sym link {:?} <- {:?}", &python, &link_dir);
+                    // FIXME: Update
+                    debug!(
+                        "Created link {} -> {}",
+                        link_dir.user_display(),
+                        python.user_display(),
+                    );
+                }
+                // FIXME: Update these errors!
+                _ => {} // Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                        //     return Err(Error::MissingExecutable(python.clone()))
+                        // }
+                        // Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
+                        // Err(err) => {
+                        //     return Err(Error::CanonicalizeExecutable {
+                        //         from: executable,
+                        //         to: python,
+                        //         err,
+                        //     })
+                        // }
+            };
+
+            match replace_symlink(&python, &python_link) {
+                Ok(()) => {
+                    dbg!("Created minor sym link {:?} <- {:?}", &python, &python_link);
+                    // FIXME: Update
+                    debug!(
+                        "Created link {} -> {}",
+                        link_dir.user_display(),
+                        python.user_display(),
+                    );
+                }
+                // FIXME: Update these errors!
+                _ => {} // Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                        //     return Err(Error::MissingExecutable(python.clone()))
+                        // }
+                        // Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
+                        // Err(err) => {
+                        //     return Err(Error::CanonicalizeExecutable {
+                        //         from: executable,
+                        //         to: python,
+                        //         err,
+                        //     })
+                        // }
+            };
+        // }
+
+        Ok(())
+    }
+
     /// Ensure the environment is marked as externally managed with the
     /// standard `EXTERNALLY-MANAGED` file.
     pub fn ensure_externally_managed(&self) -> Result<(), Error> {
@@ -572,9 +632,12 @@ impl ManagedPythonInstallation {
     ///
     /// If the file already exists at the target path, an error will be returned.
     pub fn create_bin_link(&self, target: &Path) -> Result<(), Error> {
+        // dbg!("bin_link target path: {:?}", &target);
         let python = self.executable(false);
+        // dbg!("python executable path: {:?}", &python);
 
         let bin = target.parent().ok_or(Error::NoExecutableDirectory)?;
+        // dbg!("bin path: {:?}", &bin);
         fs_err::create_dir_all(bin).map_err(|err| Error::ExecutableDirectory {
             to: bin.to_path_buf(),
             err,
@@ -582,6 +645,11 @@ impl ManagedPythonInstallation {
 
         if cfg!(unix) {
             // Note this will never copy on Unix — we use it here to allow compilation on Windows
+            // dbg!(
+            //     "[creaet_bin_link...] symlink_or_copy_file: {:?} <- {:?}",
+            //     &python,
+            //     &target
+            // );
             match symlink_or_copy_file(&python, target) {
                 Ok(()) => Ok(()),
                 Err(err) if err.kind() == io::ErrorKind::NotFound => {

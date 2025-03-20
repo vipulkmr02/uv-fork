@@ -213,6 +213,7 @@ impl InstalledTools {
         name: &PackageName,
         cache: &Cache,
     ) -> Result<Option<PythonEnvironment>, Error> {
+        dbg!("get_environment");
         let environment_path = self.tool_dir(name);
 
         match PythonEnvironment::from_root(&environment_path, cache) {
@@ -228,6 +229,7 @@ impl InstalledTools {
                 interpreter_path,
             ))) => {
                 if interpreter_path.is_symlink() {
+                    dbg!("interpreter_path: {:?}", &interpreter_path);
                     let target_path = fs_err::read_link(&interpreter_path)?;
                     warn!(
                         "Ignoring existing virtual environment linked to non-existent Python interpreter: {} -> {}",

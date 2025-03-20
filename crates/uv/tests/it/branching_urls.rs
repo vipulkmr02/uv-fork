@@ -26,6 +26,7 @@ fn branching_urls_disjoint() -> Result<()> {
     "# };
     make_project(context.temp_dir.path(), "a", deps)?;
 
+    dbg!("context.temp_dir: {:?}", context.temp_dir.path());
     uv_snapshot!(context.filters(), context.lock().current_dir(&context.temp_dir), @r###"
     success: true
     exit_code: 0

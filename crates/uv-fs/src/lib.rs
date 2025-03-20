@@ -120,6 +120,11 @@ pub fn replace_symlink(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io:
 /// On Unix, this method creates a temporary file, then moves it into place.
 #[cfg(unix)]
 pub fn replace_symlink(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
+    // dbg!(
+    //     "replace_symlink(): src: {:?}, dst: {:?}",
+    //     src.as_ref(),
+    //     dst.as_ref()
+    // );
     // Attempt to create the symlink directly.
     match std::os::unix::fs::symlink(src.as_ref(), dst.as_ref()) {
         Ok(()) => Ok(()),
@@ -152,6 +157,11 @@ pub fn remove_symlink(path: impl AsRef<Path>) -> std::io::Result<()> {
 /// This function should only be used for files. If targeting a directory, use [`replace_symlink`]
 /// instead; it will use a junction on Windows, which is more performant.
 pub fn symlink_or_copy_file(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
+    dbg!(
+        "symlink_or_copy_file(): src: {:?}, dst: {:?}",
+        src.as_ref(),
+        dst.as_ref()
+    );
     #[cfg(windows)]
     {
         fs_err::copy(src.as_ref(), dst.as_ref())?;

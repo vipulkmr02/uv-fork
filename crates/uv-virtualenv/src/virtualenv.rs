@@ -143,21 +143,35 @@ pub(crate) fn create(
     // Create a `.gitignore` file to ignore all files in the venv.
     fs::write(location.join(".gitignore"), "*")?;
 
+    // FIXME: In unix use symlink
     // Per PEP 405, the Python `home` is the parent directory of the interpreter.
-    let python_home = base_python.parent().ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::NotFound,
-            "The Python interpreter needs to have a parent directory",
-        )
-    })?;
+    // FIXME: Doc
+    let python_home = interpreter
+        .to_base_python_or_symlink_path()?
+        .parent()
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                "The Python interpreter needs to have a parent directory",
+            )
+        })?
+        .to_path_buf();
+    let python_home = python_home.as_path();
 
     // Different names for the python interpreter
     fs::create_dir_all(&scripts)?;
     let executable = scripts.join(format!("python{EXE_SUFFIX}"));
 
+    // FIXME: In unix, replace base_python with symlink dir
     #[cfg(unix)]
     {
-        uv_fs::replace_symlink(&base_python, &executable)?;
+        // dbg!("|||||||| base_python: {:?}", &base_python);
+        // FIXME: Doc
+        let executable_target = interpreter.to_base_python_or_symlink()?;
+        uv_fs::replace_symlink(&executable_target, &executable)?;
+        dbg!("executable_target: {:?}", &executable_target);
+        dbg!("executable: {:?}", &executable);
+        // uv_fs::replace_symlink(&base_python, &executable)?;
         uv_fs::replace_symlink(
             "python",
             scripts.join(format!("python{}", interpreter.python_major())),
@@ -320,6 +334,11 @@ pub(crate) fn create(
         fs::write(scripts.join(name), activator)?;
     }
 
+    dbg!("Writing home key: {:?}", &python_home);
+    dbg!(
+        "Writing version key: {:?}",
+        &interpreter.markers().python_version()
+    );
     let mut pyvenv_cfg_data: Vec<(String, String)> = vec![
         (
             "home".to_string(),
@@ -335,7 +354,7 @@ pub(crate) fn create(
         ("uv".to_string(), version().to_string()),
         (
             "version_info".to_string(),
-            interpreter.markers().python_full_version().string.clone(),
+            interpreter.markers().python_version().string.clone(),
         ),
         (
             "include-system-site-packages".to_string(),
