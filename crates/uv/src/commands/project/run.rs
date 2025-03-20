@@ -28,7 +28,7 @@ use uv_normalize::{DefaultExtras, DefaultGroups, PackageName};
 use uv_python::{
     EnvironmentPreference, Interpreter, PyVenvConfiguration, PythonDownloads, PythonEnvironment,
     PythonInstallation, PythonPreference, PythonRequest, PythonVersionFile,
-    VersionFileDiscoveryOptions,
+    VersionFileDiscoveryOptions, VersionRequest,
 };
 use uv_requirements::{RequirementsSource, RequirementsSpecification};
 use uv_resolver::{Installable, Lock, Preference};
@@ -454,6 +454,10 @@ hint: If you are running a script with `{}` in the shebang, you may need to incl
         None
     };
 
+    // When discovering the Python interpreter, did we request a specific
+    // patch version?
+    let mut is_patch_request = false;
+
     // Discover and sync the base environment.
     let workspace_cache = WorkspaceCache::default();
     let temp_dir;
@@ -605,6 +609,10 @@ hint: If you are running a script with `{}` in the shebang, you may need to incl
                     no_config,
                 )
                 .await?;
+
+                if let Some(PythonRequest::Version(version)) = &python_request {
+                    is_patch_request = matches!(version, &VersionRequest::MajorMinorPatch(..));
+                }
 
                 let interpreter = PythonInstallation::find_or_download(
                     python_request.as_ref(),
@@ -839,6 +847,9 @@ hint: If you are running a script with `{}` in the shebang, you may need to incl
                     .await?
                     .and_then(PythonVersionFile::into_version)
                 };
+                if let Some(PythonRequest::Version(version)) = &python_request {
+                    is_patch_request = matches!(version, &VersionRequest::MajorMinorPatch(..));
+                }
 
                 let python = PythonInstallation::find_or_download(
                     python_request.as_ref(),
@@ -1085,7 +1096,7 @@ hint: If you are running a script with `{}` in the shebang, you may need to incl
     };
 
     debug!("Running `{command}`");
-    let mut process = command.as_command(interpreter);
+    let mut process = command.as_command(interpreter, is_patch_request);
 
     // Construct the `PATH` environment variable.
     let new_path = std::env::join_paths(
@@ -1240,10 +1251,21 @@ impl RunCommand {
     }
 
     /// Convert a [`RunCommand`] into a [`Command`].
-    fn as_command(&self, interpreter: &Interpreter) -> Command {
+    fn as_command(&self, interpreter: &Interpreter, is_patch_request: bool) -> Command {
         match self {
             Self::Python(args) => {
-                let mut process = Command::new(interpreter.sys_executable());
+                let mut process = if !interpreter.is_standalone()
+                    || is_patch_request
+                    || interpreter.is_virtualenv()
+                {
+                    Command::new(interpreter.sys_executable())
+                } else {
+                    let executable = interpreter
+                        .maybe_symlink_path_from_base_python(interpreter.sys_executable())
+                        .expect("symlink path should be derivable from standalone executable path")
+                        .unwrap_or_else(|| PathBuf::from(interpreter.sys_executable()));
+                    Command::new(executable)
+                };
                 process.args(args);
                 process
             }

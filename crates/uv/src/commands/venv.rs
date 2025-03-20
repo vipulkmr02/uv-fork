@@ -44,7 +44,7 @@ use crate::settings::NetworkSettings;
 pub(crate) async fn venv(
     project_dir: &Path,
     path: Option<PathBuf>,
-    python_request: Option<&str>,
+    python_request: Option<PythonRequest>,
     install_mirrors: PythonInstallMirrors,
     python_preference: PythonPreference,
     python_downloads: PythonDownloads,
@@ -127,7 +127,7 @@ enum VenvError {
 async fn venv_impl(
     project_dir: &Path,
     path: Option<PathBuf>,
-    python_request: Option<&str>,
+    python_request: Option<PythonRequest>,
     install_mirrors: PythonInstallMirrors,
     link_mode: LinkMode,
     index_locations: &IndexLocations,
@@ -202,7 +202,7 @@ async fn venv_impl(
         python_request,
         requires_python,
     } = WorkspacePython::from_request(
-        python_request.map(PythonRequest::parse),
+        python_request,
         project.as_ref().map(VirtualProject::workspace),
         project_dir,
         no_config,

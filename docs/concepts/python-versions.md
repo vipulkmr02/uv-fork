@@ -158,6 +158,27 @@ $ uv python install 3.12.6 --preview  # Does not update `python3.12`
 $ uv python install 3.12.8 --preview  # Updates `python3.12` to point to 3.12.8
 ```
 
+## Upgrading Python patch versions
+
+Managed `python-build-standalone` Python minor versions can be upgraded to the latest patch.
+
+To upgrade a Python minor version to the latest patch:
+
+```
+uv python upgrade 3.12
+```
+
+To upgrade all installed Python minor versions to their latest patch versions:
+
+```
+uv python upgrade
+```
+
+All virtual environments created by uv on a minor version will transparently upgrade when that minor
+version is upgraded. A virtual environment
+[pinned to a patch version](../reference/cli.md/#uv-python-pin) will not transparently upgrade but
+will continue to respect the patch version.
+
 ## Project Python versions
 
 uv will respect Python requirements defined in `requires-python` in the `pyproject.toml` file during
