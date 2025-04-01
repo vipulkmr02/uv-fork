@@ -143,6 +143,8 @@ pub(crate) fn create(
     // Create a `.gitignore` file to ignore all files in the venv.
     fs::write(location.join(".gitignore"), "*")?;
 
+    dbg!("Interpreter::is_standalone: {}", interpreter.is_standalone());
+    dbg!("Interpreter::find_base_python: {:?}", interpreter.find_base_python());
     // Per PEP 405, the Python `home` is the parent directory of the interpreter.
     let python_home = base_python.parent().ok_or_else(|| {
         io::Error::new(
