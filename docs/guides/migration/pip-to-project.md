@@ -13,7 +13,7 @@ transitioning to uv.
 
 ## Requirements files
 
-When using pip, requirements files specify both the dependencies for your project and lock
+When using `pip` with `pip-tools`, requirements files specify both the dependencies for your project and lock
 dependencies to a specific version. For example, if you require `fastapi` and `pydantic`, you'd
 specify these in a `requirements.in` file:
 
@@ -64,7 +64,7 @@ $ pip install -r requirements.in
 $ pip freeze > requirements.txt
 ```
 
-```text tite="requirements.txt"
+```text title="requirements.txt"
 annotated-types==0.7.0
 anyio==4.8.0
 fastapi==0.115.11
@@ -89,7 +89,7 @@ $ pip install -r requirements.txt
 
 ### Development dependencies
 
-The requirements file format can only a single set of dependencies at once. This means if you have
+The requirements file format can only describe a single set of dependencies at once. This means if you have
 additional _groups_ of dependencies, such as development dependencies, they need separate files. For
 example, we'll create a `-dev` dependency file:
 
