@@ -1161,7 +1161,7 @@ impl ProjectEnvironment {
         // Lock the project environment to avoid synchronization issues.
         let _lock = ProjectInterpreter::lock(workspace).await?;
 
-        dbg!("Checking for a virtual environment with Python request: {:?}", python);
+        dbg!("Checking for a virtual environment with Python request: {:?}", &python);
         match ProjectInterpreter::discover(
             workspace,
             workspace.install_path().as_ref(),
