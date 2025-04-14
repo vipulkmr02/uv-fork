@@ -804,7 +804,7 @@ impl ProjectInterpreter {
         let venv = workspace.venv(active);
         match PythonEnvironment::from_root(&venv, cache) {
             Ok(venv) => {
-                dbg!("venv found...");
+                dbg!("venv found... with interpreter version {}", venv.interpreter().python_version());
                 if python_request.as_ref().is_none_or(|request| {
                     dbg!("No python request!");
                     if request.satisfied(venv.interpreter(), cache) {
