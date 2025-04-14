@@ -54,6 +54,7 @@ pub(crate) fn create(
     relocatable: bool,
     seed: bool,
 ) -> Result<VirtualEnvironment, Error> {
+    dbg!("VirtualEnvironment::create()");
     // Determine the base Python executable; that is, the Python executable that should be
     // considered the "base" for the virtual environment.
     //
@@ -308,6 +309,7 @@ pub(crate) fn create(
             _ => escape_posix_for_single_quotes(location.simplified().to_str().unwrap()),
         };
 
+        dbg!("Replacing and writing activate scripts! Relative site-packages: {:?}", &relative_site_packages);
         let activator = template
             .replace("{{ VIRTUAL_ENV_DIR }}", &virtual_env_dir)
             .replace("{{ BIN_NAME }}", bin_name)

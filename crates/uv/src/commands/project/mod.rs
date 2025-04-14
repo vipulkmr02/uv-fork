@@ -1228,6 +1228,7 @@ impl ProjectEnvironment {
                 // Under `--dry-run`, avoid modifying the environment.
                 if dry_run.enabled() {
                     let temp_dir = cache.venv_dir()?;
+                    dbg!("create_venv from get_or_init dry_run");
                     let environment = uv_virtualenv::create_venv(
                         temp_dir.path(),
                         interpreter,
@@ -1265,6 +1266,7 @@ impl ProjectEnvironment {
                     root.user_display().cyan()
                 )?;
 
+                dbg!("create_venv from get_or_init");
                 let environment = uv_virtualenv::create_venv(
                     &root,
                     interpreter,
@@ -1394,6 +1396,7 @@ impl ScriptEnvironment {
                 // Under `--dry-run`, avoid modifying the environment.
                 if dry_run.enabled() {
                     let temp_dir = cache.venv_dir()?;
+                    dbg!("create_venv from get_or_init dry_run 2");
                     let environment = uv_virtualenv::create_venv(
                         temp_dir.path(),
                         interpreter,
@@ -1428,6 +1431,7 @@ impl ScriptEnvironment {
                     root.user_display().cyan()
                 );
 
+                dbg!("create_venv from get_or_init 2");
                 let environment = uv_virtualenv::create_venv(
                     &root,
                     interpreter,

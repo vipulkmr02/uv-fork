@@ -407,6 +407,7 @@ hint: If you are running a script with `{}` in the shebang, you may need to incl
                 .into_interpreter();
 
                 temp_dir = cache.venv_dir()?;
+                dbg!("create_venv from run()");
                 let environment = uv_virtualenv::create_venv(
                     temp_dir.path(),
                     interpreter,
@@ -604,6 +605,7 @@ hint: If you are running a script with `{}` in the shebang, you may need to incl
 
                 // Create a virtual environment
                 temp_dir = cache.venv_dir()?;
+                dbg!("create_venv from run 2");
                 uv_virtualenv::create_venv(
                     temp_dir.path(),
                     interpreter,
@@ -829,6 +831,7 @@ hint: If you are running a script with `{}` in the shebang, you may need to incl
 
                 // If we're isolating the environment, use an ephemeral virtual environment.
                 temp_dir = cache.venv_dir()?;
+                dbg!("create_venv from run 3");
                 let venv = uv_virtualenv::create_venv(
                     temp_dir.path(),
                     interpreter,

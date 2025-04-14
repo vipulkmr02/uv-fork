@@ -75,6 +75,7 @@ pub(crate) async fn sync(
     printer: Printer,
     preview: PreviewMode,
 ) -> Result<ExitStatus> {
+    dbg!("sync()");
     // Identify the target.
     let workspace_cache = WorkspaceCache::default();
     let target = if let Some(script) = script {

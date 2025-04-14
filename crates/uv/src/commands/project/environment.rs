@@ -85,6 +85,7 @@ impl CachedEnvironment {
 
         // Create the environment in the cache, then relocate it to its content-addressed location.
         let temp_dir = cache.venv_dir()?;
+        dbg!("create_venv from CachedEnvironemtn::from_spec");
         let venv = uv_virtualenv::create_venv(
             temp_dir.path(),
             interpreter,

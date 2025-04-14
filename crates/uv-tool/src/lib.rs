@@ -274,6 +274,7 @@ impl InstalledTools {
             environment_path.user_display()
         );
 
+        dbg!("create_venv from InstalledTools");
         // Create a virtual environment.
         let venv = uv_virtualenv::create_venv(
             &environment_path,

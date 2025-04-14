@@ -265,6 +265,7 @@ async fn venv_impl(
     .into_diagnostic()?;
 
     // Create the virtual environment.
+    dbg!("create_venv from venv() -> venv_impl()");
     let venv = uv_virtualenv::create_venv(
         &path,
         interpreter,

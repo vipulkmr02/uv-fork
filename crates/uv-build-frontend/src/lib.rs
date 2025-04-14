@@ -317,6 +317,7 @@ impl SourceBuild {
         let venv = if let Some(venv) = build_isolation.shared_environment(package_name.as_ref()) {
             venv.clone()
         } else {
+            dbg!("create_venv from SourceBuild::setup");
             uv_virtualenv::create_venv(
                 temp_dir.path(),
                 interpreter.clone(),
