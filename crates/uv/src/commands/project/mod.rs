@@ -799,12 +799,15 @@ impl ProjectInterpreter {
             requires_python,
         } = WorkspacePython::from_request(python_request, Some(workspace), project_dir, no_config)
             .await?;
+        dbg!("WorkspacePython: source: {:?}, request: {:?}, requires_python: {:?}", &source, &python_request, &requires_python);
 
         // Read from the virtual environment first.
         let venv = workspace.venv(active);
         match PythonEnvironment::from_root(&venv, cache) {
             Ok(venv) => {
+                dbg!("venv found...");
                 if python_request.as_ref().is_none_or(|request| {
+                    dbg!("No python request!");
                     if request.satisfied(venv.interpreter(), cache) {
                         debug!(
                             "The virtual environment's Python version satisfies `{}`",
@@ -819,6 +822,7 @@ impl ProjectInterpreter {
                         false
                     }
                 }) {
+                    dbg!("Found python request!");
                     if let Some(requires_python) = requires_python.as_ref() {
                         if requires_python.contains(venv.interpreter().python_version()) {
                             return Ok(Self::Environment(venv));
@@ -1157,6 +1161,7 @@ impl ProjectEnvironment {
         // Lock the project environment to avoid synchronization issues.
         let _lock = ProjectInterpreter::lock(workspace).await?;
 
+        dbg!("Checking for a virtual environment with Python request: {:?}", python);
         match ProjectInterpreter::discover(
             workspace,
             workspace.install_path().as_ref(),
@@ -1177,6 +1182,7 @@ impl ProjectEnvironment {
 
             // Otherwise, create a virtual environment with the discovered interpreter.
             ProjectInterpreter::Interpreter(interpreter) => {
+                dbg!("-- Creating a virtual environment because none was found!");
                 let root = workspace.venv(active);
 
                 // Avoid removing things that are not virtual environments
