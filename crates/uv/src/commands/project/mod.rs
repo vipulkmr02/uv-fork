@@ -799,7 +799,7 @@ impl ProjectInterpreter {
             requires_python,
         } = WorkspacePython::from_request(python_request, Some(workspace), project_dir, no_config)
             .await?;
-        dbg!("WorkspacePython: source: {:?}, request: {:?}, requires_python: {:?}", &source, &python_request, &requires_python);
+        dbg!("WorkspacePython: source: {:?}, request: {:?}, requires_python: {:?}", &source.to_string(), &python_request.to_string(), &requires_python.to_string());
 
         // Read from the virtual environment first.
         let venv = workspace.venv(active);
