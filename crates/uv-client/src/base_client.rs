@@ -1,12 +1,16 @@
 use std::error::Error;
 use std::fmt::Debug;
 use std::fmt::Write;
+use std::mem;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 use std::{env, iter};
 
+use anyhow::anyhow;
+use http::StatusCode;
 use itertools::Itertools;
+use reqwest::Request;
 use reqwest::{Client, ClientBuilder, Proxy, Response};
 use reqwest_middleware::{ClientWithMiddleware, Middleware};
 use reqwest_retry::policies::ExponentialBackoff;
@@ -60,6 +64,23 @@ pub struct BaseClientBuilder<'a> {
     default_timeout: Duration,
     extra_middleware: Option<ExtraMiddleware>,
     proxies: Vec<Proxy>,
+    redirect_policy: RedirectPolicy,
+}
+
+#[derive(Debug, Default, Clone)]
+pub enum RedirectPolicy {
+    #[default]
+    Default,
+    None,
+}
+
+impl RedirectPolicy {
+    pub fn policy(&self) -> reqwest::redirect::Policy {
+        match self {
+            RedirectPolicy::Default => reqwest::redirect::Policy::default(),
+            RedirectPolicy::None => reqwest::redirect::Policy::none(),
+        }
+    }
 }
 
 /// A list of user-defined middlewares to be applied to the client.
@@ -95,6 +116,7 @@ impl BaseClientBuilder<'_> {
             default_timeout: Duration::from_secs(30),
             extra_middleware: None,
             proxies: vec![],
+            redirect_policy: RedirectPolicy::default(),
         }
     }
 }
@@ -172,6 +194,12 @@ impl<'a> BaseClientBuilder<'a> {
         self
     }
 
+    #[must_use]
+    pub fn redirect(mut self, policy: RedirectPolicy) -> Self {
+        self.redirect_policy = policy;
+        self
+    }
+
     pub fn is_offline(&self) -> bool {
         matches!(self.connectivity, Connectivity::Offline)
     }
@@ -228,6 +256,7 @@ impl<'a> BaseClientBuilder<'a> {
             timeout,
             ssl_cert_file_exists,
             Security::Secure,
+            self.redirect_policy.policy(),
         );
 
         // Create an insecure client that accepts invalid certificates.
@@ -236,6 +265,7 @@ impl<'a> BaseClientBuilder<'a> {
             timeout,
             ssl_cert_file_exists,
             Security::Insecure,
+            self.redirect_policy.policy(),
         );
 
         // Wrap in any relevant middleware and handle connectivity.
@@ -278,6 +308,7 @@ impl<'a> BaseClientBuilder<'a> {
         timeout: Duration,
         ssl_cert_file_exists: bool,
         security: Security,
+        redirect_policy: reqwest::redirect::Policy,
     ) -> Client {
         // Configure the builder.
         let client_builder = ClientBuilder::new()
@@ -285,7 +316,8 @@ impl<'a> BaseClientBuilder<'a> {
             .user_agent(user_agent)
             .pool_max_idle_per_host(20)
             .read_timeout(timeout)
-            .tls_built_in_root_certs(false);
+            .tls_built_in_root_certs(false)
+            .redirect(redirect_policy);
 
         // If necessary, accept invalid certificates.
         let client_builder = match security {
@@ -417,6 +449,15 @@ impl BaseClient {
         }
     }
 
+    /// Selects the appropriate client based on the host's trustworthiness.
+    pub fn redirect_client_for_host(&self, url: &Url) -> RedirectClientWithMiddleware {
+        if self.disable_ssl(url) {
+            RedirectClientWithMiddleware(&self.dangerous_client)
+        } else {
+            RedirectClientWithMiddleware(&self.client)
+        }
+    }
+
     /// Returns `true` if the host is trusted to use the insecure client.
     pub fn disable_ssl(&self, url: &Url) -> bool {
         self.allow_insecure_host
@@ -437,6 +478,50 @@ impl BaseClient {
     /// The [`RetryPolicy`] for the client.
     pub fn retry_policy(&self) -> ExponentialBackoff {
         ExponentialBackoff::builder().build_with_max_retries(self.retries)
+    }
+}
+
+/// A base client for HTTP requests
+#[derive(Debug, Clone)]
+pub struct RedirectClientWithMiddleware<'a>(&'a ClientWithMiddleware);
+
+impl RedirectClientWithMiddleware<'_> {
+    pub async fn execute(&self, req: Request) -> reqwest_middleware::Result<Response> {
+        let mut request = req;
+        let mut redirects = 0;
+        let max_redirects = 10;
+        loop {
+            let result = self
+                .0
+                .execute(request.try_clone().expect("HTTP request must be cloneable"))
+                .await;
+            if redirects > max_redirects {
+                return result;
+            }
+            let Ok(ref response) = result else {
+                return result;
+            };
+            if response.status() == StatusCode::FOUND {
+                if let Some(location) = response.headers().get("location") {
+                    let redirect_url = Url::parse(location.to_str().map_err(|_e| {
+                        reqwest_middleware::Error::Middleware(anyhow!(
+                            "Invalid 302 location header"
+                        ))
+                    })?)
+                    .map_err(|_e| {
+                        reqwest_middleware::Error::Middleware(anyhow!(
+                            "Invalid 302 location header"
+                        ))
+                    })?;
+                    debug!("Received redirect to {redirect_url}");
+                    let url_mut = request.url_mut();
+                    mem::swap(url_mut, &mut redirect_url.clone());
+                    redirects += 1;
+                    continue;
+                }
+            }
+            return result;
+        }
     }
 }
 

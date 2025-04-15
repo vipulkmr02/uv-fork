@@ -34,7 +34,7 @@ use uv_pypi_types::{ResolutionMetadata, SimpleJson};
 use uv_small_str::SmallString;
 use uv_torch::TorchStrategy;
 
-use crate::base_client::{BaseClientBuilder, ExtraMiddleware};
+use crate::base_client::{BaseClientBuilder, ExtraMiddleware, RedirectPolicy};
 use crate::cached_client::CacheControl;
 use crate::flat_index::FlatIndexEntry;
 use crate::html::SimpleHtml;
@@ -158,7 +158,7 @@ impl<'a> RegistryClientBuilder<'a> {
 
     pub fn build(self) -> RegistryClient {
         // Build a base client
-        let builder = self.base_client_builder;
+        let builder = self.base_client_builder.redirect(RedirectPolicy::None);
 
         let client = builder.build();
 
