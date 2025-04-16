@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::fmt::Debug;
 use std::fmt::Write;
-use std::mem;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -67,6 +66,7 @@ pub struct BaseClientBuilder<'a> {
     redirect_policy: RedirectPolicy,
 }
 
+/// A cloneable representation of a reqwest redirect policy.
 #[derive(Debug, Default, Clone)]
 pub enum RedirectPolicy {
     #[default]
@@ -449,8 +449,13 @@ impl BaseClient {
         }
     }
 
+    /// FIXME doc
+    pub async fn execute_with_redirect_handling(&self, url: &Url, req: Request) -> reqwest_middleware::Result<Response> {
+        self.redirect_client_for_host(url).execute(req).await
+    }
+
     /// Selects the appropriate client based on the host's trustworthiness.
-    pub fn redirect_client_for_host(&self, url: &Url) -> RedirectClientWithMiddleware {
+    fn redirect_client_for_host(&self, url: &Url) -> RedirectClientWithMiddleware {
         if self.disable_ssl(url) {
             RedirectClientWithMiddleware(&self.dangerous_client)
         } else {
@@ -481,47 +486,52 @@ impl BaseClient {
     }
 }
 
-/// A base client for HTTP requests
+/// Wrapper around [`ClientWithMiddleware`] that manages redirects on
+/// `execute()`.
 #[derive(Debug, Clone)]
 pub struct RedirectClientWithMiddleware<'a>(&'a ClientWithMiddleware);
 
 impl RedirectClientWithMiddleware<'_> {
+    /// Execute a request. If the response is a 302 redirect, execute the
+    /// request again with the redirect location Url (up to a maximum number
+    /// of redirects).
+    ///
+    /// Unlike the built-in reqwest redirect policies, this will send the
+    /// redirect request through the entire middleware pipeline again.
     pub async fn execute(&self, req: Request) -> reqwest_middleware::Result<Response> {
         let mut request = req;
-        let mut redirects = 0;
         let max_redirects = 10;
-        loop {
+
+        for redirects in 0..=max_redirects {
             let result = self
                 .0
                 .execute(request.try_clone().expect("HTTP request must be cloneable"))
                 .await;
-            if redirects > max_redirects {
+            if result.is_err() || redirects == max_redirects {
                 return result;
             }
-            let Ok(ref response) = result else {
-                return result;
-            };
+            let response = result.unwrap();
+
+            // Handle redirect if we receive a 302
             if response.status() == StatusCode::FOUND {
                 if let Some(location) = response.headers().get("location") {
-                    let redirect_url = Url::parse(location.to_str().map_err(|_e| {
-                        reqwest_middleware::Error::Middleware(anyhow!(
-                            "Invalid 302 location header"
-                        ))
-                    })?)
-                    .map_err(|_e| {
+                    let location_str = location.to_str().map_err(|_| {
                         reqwest_middleware::Error::Middleware(anyhow!(
                             "Invalid 302 location header"
                         ))
                     })?;
-                    debug!("Received redirect to {redirect_url}");
-                    let url_mut = request.url_mut();
-                    mem::swap(url_mut, &mut redirect_url.clone());
-                    redirects += 1;
+                    let redirect_url = Url::parse(location_str).map_err(|_| {
+                        reqwest_middleware::Error::Middleware(anyhow!("Invalid 302 location URL"))
+                    })?;
+                    debug!("Received 302 redirect to {redirect_url}");
+                    *request.url_mut() = redirect_url;
                     continue;
                 }
             }
-            return result;
+
+            return Ok(response);
         }
+        unreachable!("Loop exits when max redirects is reached");
     }
 }
 

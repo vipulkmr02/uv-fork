@@ -1,6 +1,6 @@
 use std::sync::{Arc, LazyLock};
 
-use http::{Extensions, StatusCode};
+use http::{header::CONTENT_TYPE, Extensions, StatusCode};
 use url::Url;
 
 use crate::{
@@ -352,13 +352,7 @@ impl AuthMiddleware {
         if matches!(auth_policy, AuthPolicy::Always) && credentials.password().is_none() {
             return Err(Error::Middleware(format_err!("Missing password for {url}")));
         }
-        let result = next
-            .clone()
-            .run(
-                request.try_clone().expect("Request should not be a stream"),
-                extensions,
-            )
-            .await;
+        let result = next.clone().run(request, extensions).await;
 
         // Update the cache with new credentials on a successful request
         if result

@@ -13,7 +13,10 @@ use anyhow::Result;
 use assert_fs::prelude::*;
 use indoc::{formatdoc, indoc};
 use insta::assert_snapshot;
-use std::path::Path;
+use tokio::time::sleep;
+use url::Url;
+use wiremock::{matchers::method, Mock, MockServer, ResponseTemplate};
+use std::{path::Path, time::Duration};
 use uv_fs::Simplified;
 
 use uv_static::EnvVars;
@@ -10585,6 +10588,60 @@ fn add_auth_policy_never_without_credentials() -> Result<()> {
     );
 
     context.assert_command("import anyio").success();
+    Ok(())
+}
+
+/// If uv receives a 302 redirect, it should use supplied credentials for the
+/// new location.
+#[tokio::test]
+async fn add_redirect() -> Result<()> {
+    let context = TestContext::new("3.12");
+
+    let pyproject_toml = context.temp_dir.child("pyproject.toml");
+    pyproject_toml.write_str(indoc! { r#"
+        [project]
+        name = "foo"
+        version = "1.0.0"
+        requires-python = ">=3.12"
+        dependencies = []
+        "#
+    })?;
+
+    let redirect_server = MockServer::start().await;
+
+    // Configure the redirect server to respond with a 302 to the auth server
+    Mock::given(method("GET"))
+        .respond_with(
+            ResponseTemplate::new(302)
+                .insert_header("Location", "https://pypi-proxy.fly.dev/basic-auth/simple/anyio/"),
+        )
+        .mount(&redirect_server)
+        .await;
+
+    let mut redirect_url = Url::parse(&redirect_server.uri())?;
+    let _ = redirect_url.set_username("public");
+    let _ = redirect_url.set_password(Some("heron"));
+    dbg!("{:?}", &redirect_url.as_str());
+    sleep(Duration::from_secs(10000000)).await;
+
+    context.add().arg("-vv").arg("--default-index").arg(redirect_url.as_str()).arg("anyio");
+
+    // uv_snapshot!(context.add().arg("-vv").arg("--default-index").arg(redirect_url.as_str()).arg("anyio"), @r"
+    // success: true
+    // exit_code: 0
+    // ----- stdout -----
+
+    // ----- stderr -----
+    // Resolved 4 packages in [TIME]
+    // Prepared 3 packages in [TIME]
+    // Installed 3 packages in [TIME]
+    //  + anyio==4.3.0
+    //  + idna==3.6
+    //  + sniffio==1.3.1
+    // "
+    // );
+
+    // context.assert_command("import anyio").success();
     Ok(())
 }
 
