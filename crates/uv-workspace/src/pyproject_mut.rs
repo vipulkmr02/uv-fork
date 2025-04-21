@@ -100,8 +100,12 @@ pub enum DependencyBoundDefault {
     #[default]
     Lower,
     /// Allow the same major version, similar to the semver caret, e.g., `>=1.2.3,<2.0.0`.
+    ///
+    /// Leading zeroes are skipped, e.g. `>=0.1.2,<0.2.0`.
     Major,
     /// Allow the same minor version, similar to the semver tilde does, `>=1.2.3,<1.3.0`.
+    ///
+    /// Leading zeroes are skipped, e.g. `>=0.1.2,<0.1.3`.
     Minor,
     /// Pin the exact version, e.g., `==1.2.3`.
     ///
@@ -116,14 +120,40 @@ impl DependencyBoundDefault {
                 VersionSpecifiers::from(VersionSpecifier::greater_than_equal_version(version))
             }
             DependencyBoundDefault::Major => {
+                let leading_zeroes = version
+                    .release()
+                    .iter()
+                    .take_while(|digit| **digit == 0)
+                    .count();
+
+                // Special case: The version is 0.
+                if leading_zeroes == version.release().len() {
+                    let upper_bound = Version::new(
+                        [0, 1]
+                            .into_iter()
+                            .chain(iter::repeat_n(0, version.release().iter().skip(2).len())),
+                    );
+                    return VersionSpecifiers::from_iter([
+                        VersionSpecifier::greater_than_equal_version(version),
+                        VersionSpecifier::less_than_version(upper_bound),
+                    ]);
+                }
+
                 // Compute the new major version and pad it to the same length:
                 // 1.2.3 -> 2.0.0
                 // 1.2 -> 2.0
                 // 1 -> 2
-                let next_major = version.release()[0] + 1;
+                // We ignore leading zeroes, adding Semver-style semantics to 0.x versions, too:
+                // 0.1.2 -> 0.2.0
+                // 0.0.1 -> 0.0.2
+                let major = version.release().get(leading_zeroes).copied().unwrap_or(0);
                 let upper_bound = Version::new(
-                    iter::once(next_major)
-                        .chain(iter::repeat_n(0, version.release().iter().skip(1).len())),
+                    iter::repeat_n(0, leading_zeroes)
+                        .chain(iter::once(major + 1))
+                        .chain(iter::repeat_n(
+                            0,
+                            version.release().iter().skip(leading_zeroes + 1).len(),
+                        )),
                 );
 
                 VersionSpecifiers::from_iter([
@@ -132,17 +162,68 @@ impl DependencyBoundDefault {
                 ])
             }
             DependencyBoundDefault::Minor => {
+                let leading_zeroes = version
+                    .release()
+                    .iter()
+                    .take_while(|digit| **digit == 0)
+                    .count();
+
+                // Special case: The version is 0.
+                if leading_zeroes == version.release().len() {
+                    let upper_bound = [0, 0, 1]
+                        .into_iter()
+                        .chain(iter::repeat_n(0, version.release().iter().skip(3).len()));
+                    return VersionSpecifiers::from_iter([
+                        VersionSpecifier::greater_than_equal_version(version),
+                        VersionSpecifier::less_than_version(Version::new(upper_bound)),
+                    ]);
+                }
+
+                // If both major and minor version are 0, the concept of bumping the minor version
+                // instead of the major version is not useful. Instead, we bump the next
+                // non-zero part of the version. This avoids extending the three components of 0.0.1
+                // to the four components of 0.0.1.1.
+                if leading_zeroes >= 2 {
+                    let most_significant =
+                        version.release().get(leading_zeroes).copied().unwrap_or(0);
+                    let upper_bound = Version::new(
+                        iter::repeat_n(0, leading_zeroes)
+                            .chain(iter::once(most_significant + 1))
+                            .chain(iter::repeat_n(
+                                0,
+                                version.release().iter().skip(leading_zeroes + 2).len(),
+                            )),
+                    );
+                    return VersionSpecifiers::from_iter([
+                        VersionSpecifier::greater_than_equal_version(version),
+                        VersionSpecifier::less_than_version(upper_bound),
+                    ]);
+                }
+
                 // Compute the new minor version and pad it to the same length where possible:
                 // 1.2.3 -> 1.3.0
                 // 1.2 -> 1.3
                 // 1 -> 1.1
+                // We ignore leading zero, adding Semver-style semantics to 0.x versions, too:
+                // 0.1.2 -> 0.1.3
+                // 0.0.1 -> 0.0.2
 
-                // If the version has only one digit, say `1`, pad with zeroes.
-                let next_minor = version.release().get(1).copied().unwrap_or(0) + 1;
+                // If the version has only one digit, say `1`, or if there are only leading zeroes,
+                // pad with zeroes.
+                let major = version.release().get(leading_zeroes).copied().unwrap_or(0);
+                let minor = version
+                    .release()
+                    .get(leading_zeroes + 1)
+                    .copied()
+                    .unwrap_or(0);
                 let upper_bound = Version::new(
-                    iter::once(version.release()[0])
-                        .chain(iter::once(next_minor))
-                        .chain(iter::repeat_n(0, version.release().iter().skip(2).len())),
+                    iter::repeat_n(0, leading_zeroes)
+                        .chain(iter::once(major))
+                        .chain(iter::once(minor + 1))
+                        .chain(iter::repeat_n(
+                            0,
+                            version.release().iter().skip(leading_zeroes + 2).len(),
+                        )),
                 );
 
                 VersionSpecifiers::from_iter([
@@ -1549,63 +1630,105 @@ mod test {
     }
 
     #[test]
-    fn bound_kind_to_specifiers() {
+    fn bound_kind_to_specifiers_exact() {
         let tests = [
-            (DependencyBoundDefault::Exact, "1", "==1"),
-            (DependencyBoundDefault::Exact, "1.0.0", "==1.0.0"),
-            (DependencyBoundDefault::Exact, "1.2", "==1.2"),
-            (DependencyBoundDefault::Exact, "1.2.3", "==1.2.3"),
-            (DependencyBoundDefault::Exact, "1.2.3.4", "==1.2.3.4"),
-            (
-                DependencyBoundDefault::Exact,
-                "1.2.3.4a1.post1",
-                "==1.2.3.4a1.post1",
-            ),
-            (DependencyBoundDefault::Lower, "1", ">=1"),
-            (DependencyBoundDefault::Lower, "1.0.0", ">=1.0.0"),
-            (DependencyBoundDefault::Lower, "1.2", ">=1.2"),
-            (DependencyBoundDefault::Lower, "1.2.3", ">=1.2.3"),
-            (DependencyBoundDefault::Lower, "1.2.3.4", ">=1.2.3.4"),
-            (
-                DependencyBoundDefault::Lower,
-                "1.2.3.4a1.post1",
-                ">=1.2.3.4a1.post1",
-            ),
-            (DependencyBoundDefault::Major, "1", ">=1, <2"),
-            (DependencyBoundDefault::Major, "1.0.0", ">=1.0.0, <2.0.0"),
-            (DependencyBoundDefault::Major, "1.2", ">=1.2, <2.0"),
-            (DependencyBoundDefault::Major, "1.2.3", ">=1.2.3, <2.0.0"),
-            (
-                DependencyBoundDefault::Major,
-                "1.2.3.4",
-                ">=1.2.3.4, <2.0.0.0",
-            ),
-            (
-                DependencyBoundDefault::Major,
-                "1.2.3.4a1.post1",
-                ">=1.2.3.4a1.post1, <2.0.0.0",
-            ),
-            (DependencyBoundDefault::Minor, "1", ">=1, <1.1"),
-            (DependencyBoundDefault::Minor, "1.0.0", ">=1.0.0, <1.1.0"),
-            (DependencyBoundDefault::Minor, "1.2", ">=1.2, <1.3"),
-            (DependencyBoundDefault::Minor, "1.2.3", ">=1.2.3, <1.3.0"),
-            (
-                DependencyBoundDefault::Minor,
-                "1.2.3.4",
-                ">=1.2.3.4, <1.3.0.0",
-            ),
-            (
-                DependencyBoundDefault::Minor,
-                "1.2.3.4a1.post1",
-                ">=1.2.3.4a1.post1, <1.3.0.0",
-            ),
+            ("0", "==0"),
+            ("0.0", "==0.0"),
+            ("0.0.0", "==0.0.0"),
+            ("0.1", "==0.1"),
+            ("0.0.1", "==0.0.1"),
+            ("0.0.0.1", "==0.0.0.1"),
+            ("1.0.0", "==1.0.0"),
+            ("1.2", "==1.2"),
+            ("1.2.3", "==1.2.3"),
+            ("1.2.3.4", "==1.2.3.4"),
+            ("1.2.3.4a1.post1", "==1.2.3.4a1.post1"),
         ];
 
-        for (kind, version, expected) in tests {
-            let actual = kind
+        for (version, expected) in tests {
+            let actual = DependencyBoundDefault::Exact
                 .specifiers(Version::from_str(version).unwrap())
                 .to_string();
-            assert_eq!(actual, expected);
+            assert_eq!(actual, expected, "{version}");
+        }
+    }
+
+    #[test]
+    fn bound_kind_to_specifiers_lower() {
+        let tests = [
+            ("0", ">=0"),
+            ("0.0", ">=0.0"),
+            ("0.0.0", ">=0.0.0"),
+            ("0.1", ">=0.1"),
+            ("0.0.1", ">=0.0.1"),
+            ("0.0.0.1", ">=0.0.0.1"),
+            ("1", ">=1"),
+            ("1.0.0", ">=1.0.0"),
+            ("1.2", ">=1.2"),
+            ("1.2.3", ">=1.2.3"),
+            ("1.2.3.4", ">=1.2.3.4"),
+            ("1.2.3.4a1.post1", ">=1.2.3.4a1.post1"),
+        ];
+
+        for (version, expected) in tests {
+            let actual = DependencyBoundDefault::Lower
+                .specifiers(Version::from_str(version).unwrap())
+                .to_string();
+            assert_eq!(actual, expected, "{version}");
+        }
+    }
+
+    #[test]
+    fn bound_kind_to_specifiers_major() {
+        let tests = [
+            ("0", ">=0, <0.1"),
+            ("0.0", ">=0.0, <0.1"),
+            ("0.0.0", ">=0.0.0, <0.1.0"),
+            ("0.0.0.0", ">=0.0.0.0, <0.1.0.0"),
+            ("0.1", ">=0.1, <0.2"),
+            ("0.0.1", ">=0.0.1, <0.0.2"),
+            ("0.0.1.1", ">=0.0.1.1, <0.0.2.0"),
+            ("0.0.0.1", ">=0.0.0.1, <0.0.0.2"),
+            ("1", ">=1, <2"),
+            ("1.0.0", ">=1.0.0, <2.0.0"),
+            ("1.2", ">=1.2, <2.0"),
+            ("1.2.3", ">=1.2.3, <2.0.0"),
+            ("1.2.3.4", ">=1.2.3.4, <2.0.0.0"),
+            ("1.2.3.4a1.post1", ">=1.2.3.4a1.post1, <2.0.0.0"),
+        ];
+
+        for (version, expected) in tests {
+            let actual = DependencyBoundDefault::Major
+                .specifiers(Version::from_str(version).unwrap())
+                .to_string();
+            assert_eq!(actual, expected, "{version}");
+        }
+    }
+
+    #[test]
+    fn bound_kind_to_specifiers_minor() {
+        let tests = [
+            ("0", ">=0, <0.0.1"),
+            ("0.0", ">=0.0, <0.0.1"),
+            ("0.0.0", ">=0.0.0, <0.0.1"),
+            ("0.0.0.0", ">=0.0.0.0, <0.0.1.0"),
+            ("0.1", ">=0.1, <0.1.1"),
+            ("0.0.1", ">=0.0.1, <0.0.2"),
+            ("0.0.1.1", ">=0.0.1.1, <0.0.2"),
+            ("0.0.0.1", ">=0.0.0.1, <0.0.0.2"),
+            ("1", ">=1, <1.1"),
+            ("1.0.0", ">=1.0.0, <1.1.0"),
+            ("1.2", ">=1.2, <1.3"),
+            ("1.2.3", ">=1.2.3, <1.3.0"),
+            ("1.2.3.4", ">=1.2.3.4, <1.3.0.0"),
+            ("1.2.3.4a1.post1", ">=1.2.3.4a1.post1, <1.3.0.0"),
+        ];
+
+        for (version, expected) in tests {
+            let actual = DependencyBoundDefault::Minor
+                .specifiers(Version::from_str(version).unwrap())
+                .to_string();
+            assert_eq!(actual, expected, "{version}");
         }
     }
 }
