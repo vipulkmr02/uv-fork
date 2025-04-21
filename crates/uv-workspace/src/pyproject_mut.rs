@@ -103,7 +103,7 @@ pub enum DependencyBoundDefault {
     ///
     /// Leading zeroes are skipped, e.g. `>=0.1.2,<0.2.0`.
     Major,
-    /// Allow the same minor version, similar to the semver tilde does, `>=1.2.3,<1.3.0`.
+    /// Allow the same minor version, similar to the semver tilde, e.g., `>=1.2.3,<1.3.0`.
     ///
     /// Leading zeroes are skipped, e.g. `>=0.1.2,<0.1.3`.
     Minor,
