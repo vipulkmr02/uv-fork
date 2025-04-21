@@ -88,9 +88,9 @@ impl ArrayEdit {
 }
 
 /// The default version specifier when adding a dependency.
-// There is an implicit assumption that version numbers have three digits. While PEP 440
-// allows an arbitrary number of version digits, most projects stick to two or three digits, which
-// we can treat like a SemVer major.minor.patch.
+// While PEP 440 allows an arbitrary number of version digits, the `major` and `minor` build on
+// most projects sticking to two or three components and a SemVer-ish versioning system, so can
+// bump the major or minor version of a major.minor or major.minor.patch input version.
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
@@ -115,6 +115,9 @@ pub enum DependencyBoundDefault {
 
 impl DependencyBoundDefault {
     fn specifiers(self, version: Version) -> VersionSpecifiers {
+        // Nomenclature: "major" is the most significant component of the version, "minor" is the
+        // second most significant component, so most versions are either major.minor.patch or
+        // 0.major.minor.
         match self {
             DependencyBoundDefault::Lower => {
                 VersionSpecifiers::from(VersionSpecifier::greater_than_equal_version(version))
