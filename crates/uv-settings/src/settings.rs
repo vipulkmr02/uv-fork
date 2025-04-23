@@ -55,7 +55,7 @@ pub struct Options {
     pub publish: PublishOptions,
 
     #[serde(flatten)]
-    pub edit: EditOptions,
+    pub add: AddOptions,
 
     #[option_group]
     pub pip: Option<PipOptions>,
@@ -1846,7 +1846,7 @@ pub struct OptionsWire {
     check_url: Option<IndexUrl>,
 
     // #[serde(flatten)]
-    // edit: EditOptions
+    // add: AddOptions
     bounds: Option<DependencyBoundDefault>,
 
     pip: Option<PipOptions>,
@@ -2005,7 +2005,7 @@ impl From<OptionsWire> for Options {
                 trusted_publishing,
                 check_url,
             },
-            edit: EditOptions { bounds },
+            add: AddOptions { bounds },
             workspace,
             sources,
             dev_dependencies,
@@ -2071,7 +2071,7 @@ pub struct PublishOptions {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, CombineOptions, OptionsMetadata)]
 #[serde(rename_all = "kebab-case")]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
-pub struct EditOptions {
+pub struct AddOptions {
     /// The default version specifier when adding a dependency.
     ///
     /// If no constraint or URL is provided for a dependency, a bound is added based on the
