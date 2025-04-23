@@ -45,7 +45,7 @@ use uv_static::EnvVars;
 use uv_torch::TorchMode;
 use uv_warnings::warn_user_once;
 use uv_workspace::pyproject::DependencyType;
-use uv_workspace::pyproject_mut::DependencyBoundDefault;
+use uv_workspace::pyproject_mut::AddBoundsKind;
 
 use crate::commands::ToolRunCommand;
 use crate::commands::{pip::operations::Modifications, InitKind, InitProjectKind};
@@ -1251,7 +1251,7 @@ pub(crate) struct AddSettings {
     pub(crate) editable: Option<bool>,
     pub(crate) extras: Vec<ExtraName>,
     pub(crate) raw_sources: bool,
-    pub(crate) bounds: Option<DependencyBoundDefault>,
+    pub(crate) bounds: Option<AddBoundsKind>,
     pub(crate) rev: Option<String>,
     pub(crate) tag: Option<String>,
     pub(crate) branch: Option<String>,
@@ -1358,7 +1358,7 @@ impl AddSettings {
             .map(|fs| fs.install_mirrors.clone())
             .unwrap_or_default();
 
-        let bounds = bounds.or(filesystem.as_ref().and_then(|fs| fs.add.bounds));
+        let bounds = bounds.or(filesystem.as_ref().and_then(|fs| fs.add.add_bounds));
 
         Self {
             locked,

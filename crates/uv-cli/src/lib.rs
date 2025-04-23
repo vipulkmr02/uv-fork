@@ -22,7 +22,7 @@ use uv_python::{PythonDownloads, PythonPreference, PythonVersion};
 use uv_resolver::{AnnotationStyle, ExcludeNewer, ForkStrategy, PrereleaseMode, ResolutionMode};
 use uv_static::EnvVars;
 use uv_torch::TorchMode;
-use uv_workspace::pyproject_mut::DependencyBoundDefault;
+use uv_workspace::pyproject_mut::AddBoundsKind;
 
 pub mod comma;
 pub mod compat;
@@ -3494,7 +3494,7 @@ pub struct AddArgs {
     /// latest compatible version of the package, e.g., `>=1.2.3`, unless `--frozen` is provided, in
     /// which case no resolution is performed.
     #[arg(long, value_enum)]
-    pub bounds: Option<DependencyBoundDefault>,
+    pub bounds: Option<AddBoundsKind>,
 
     /// Commit to use when adding a dependency from Git.
     #[arg(long, group = "git-ref", action = clap::ArgAction::Set)]

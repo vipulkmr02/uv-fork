@@ -40,9 +40,7 @@ use uv_settings::PythonInstallMirrors;
 use uv_types::{BuildIsolation, HashStrategy};
 use uv_warnings::warn_user_once;
 use uv_workspace::pyproject::{DependencyType, Source, SourceError, Sources, ToolUvSources};
-use uv_workspace::pyproject_mut::{
-    ArrayEdit, DependencyBoundDefault, DependencyTarget, PyProjectTomlMut,
-};
+use uv_workspace::pyproject_mut::{AddBoundsKind, ArrayEdit, DependencyTarget, PyProjectTomlMut};
 use uv_workspace::{DiscoveryOptions, VirtualProject, Workspace, WorkspaceCache};
 
 use crate::commands::pip::loggers::{
@@ -75,7 +73,7 @@ pub(crate) async fn add(
     editable: Option<bool>,
     dependency_type: DependencyType,
     raw_sources: bool,
-    bounds: Option<DependencyBoundDefault>,
+    bounds: Option<AddBoundsKind>,
     indexes: Vec<Index>,
     rev: Option<String>,
     tag: Option<String>,
@@ -751,7 +749,7 @@ async fn lock_and_sync(
     locked: bool,
     dependency_type: &DependencyType,
     raw_sources: bool,
-    bound_kind: &DependencyBoundDefault,
+    bound_kind: &AddBoundsKind,
     constraints: Vec<NameRequirementSpecification>,
     settings: &ResolverInstallerSettings,
     network_settings: &NetworkSettings,

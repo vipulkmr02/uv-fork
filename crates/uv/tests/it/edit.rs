@@ -11423,7 +11423,7 @@ fn add_bounds() -> Result<()> {
     // Set bounds in `uv.toml`
     let uv_toml = context.temp_dir.child("uv.toml");
     uv_toml.write_str(indoc! {r#"
-        bounds = "exact"
+        add-bounds = "exact"
     "#})?;
     let pyproject_toml = context.temp_dir.child("pyproject.toml");
     pyproject_toml.write_str(indoc! {r#"
@@ -11470,7 +11470,7 @@ fn add_bounds() -> Result<()> {
         requires-python = ">=3.12"
 
         [tool.uv]
-        bounds = "major"
+        add-bounds = "major"
     "#})?;
 
     uv_snapshot!(context.filters(), context.add().arg("anyio"), @r"
@@ -11499,18 +11499,17 @@ fn add_bounds() -> Result<()> {
     ]
 
     [tool.uv]
-    bounds = "major"
+    add-bounds = "major"
     "#
     );
 
-    // Set bounds on the CLI
-    uv_snapshot!(context.filters(), context.add().arg("sniffio").arg("--bounds").arg("minor"), @r"
+    // Set bounds on the CLI and use `--preview` to silence the warning.
+    uv_snapshot!(context.filters(), context.add().arg("sniffio").arg("--bounds").arg("minor").arg("--preview"), @r"
     success: true
     exit_code: 0
     ----- stdout -----
 
     ----- stderr -----
-    warning: The bounds option is in preview and its configuration may change in any future release.
     Resolved 4 packages in [TIME]
     Audited 3 packages in [TIME]
     ");
@@ -11528,7 +11527,7 @@ fn add_bounds() -> Result<()> {
     ]
 
     [tool.uv]
-    bounds = "major"
+    add-bounds = "major"
     "#
     );
 

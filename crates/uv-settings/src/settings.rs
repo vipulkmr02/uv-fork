@@ -20,7 +20,7 @@ use uv_python::{PythonDownloads, PythonPreference, PythonVersion};
 use uv_resolver::{AnnotationStyle, ExcludeNewer, ForkStrategy, PrereleaseMode, ResolutionMode};
 use uv_static::EnvVars;
 use uv_torch::TorchMode;
-use uv_workspace::pyproject_mut::DependencyBoundDefault;
+use uv_workspace::pyproject_mut::AddBoundsKind;
 
 /// A `pyproject.toml` with an (optional) `[tool.uv]` section.
 #[allow(dead_code)]
@@ -1847,7 +1847,7 @@ pub struct OptionsWire {
 
     // #[serde(flatten)]
     // add: AddOptions
-    bounds: Option<DependencyBoundDefault>,
+    add_bounds: Option<AddBoundsKind>,
 
     pip: Option<PipOptions>,
     cache_keys: Option<Vec<CacheKey>>,
@@ -1937,7 +1937,7 @@ impl From<OptionsWire> for Options {
             dev_dependencies,
             managed,
             package,
-            bounds,
+            add_bounds: bounds,
             // Used by the build backend
             build_backend,
         } = value;
@@ -2005,7 +2005,7 @@ impl From<OptionsWire> for Options {
                 trusted_publishing,
                 check_url,
             },
-            add: AddOptions { bounds },
+            add: AddOptions { add_bounds: bounds },
             workspace,
             sources,
             dev_dependencies,
@@ -2081,9 +2081,9 @@ pub struct AddOptions {
         default = "\"lower\"",
         value_type = "str",
         example = r#"
-            bounds = "major"
+            add-bounds = "major"
         "#,
         possible_values = true
     )]
-    pub bounds: Option<DependencyBoundDefault>,
+    pub add_bounds: Option<AddBoundsKind>,
 }

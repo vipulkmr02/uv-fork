@@ -95,7 +95,7 @@ impl ArrayEdit {
 #[serde(rename_all = "kebab-case")]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
-pub enum DependencyBoundDefault {
+pub enum AddBoundsKind {
     /// Only a lower bound, e.g., `>=1.2.3`.
     #[default]
     Lower,
@@ -113,16 +113,16 @@ pub enum DependencyBoundDefault {
     Exact,
 }
 
-impl DependencyBoundDefault {
+impl AddBoundsKind {
     fn specifiers(self, version: Version) -> VersionSpecifiers {
         // Nomenclature: "major" is the most significant component of the version, "minor" is the
         // second most significant component, so most versions are either major.minor.patch or
         // 0.major.minor.
         match self {
-            DependencyBoundDefault::Lower => {
+            AddBoundsKind::Lower => {
                 VersionSpecifiers::from(VersionSpecifier::greater_than_equal_version(version))
             }
-            DependencyBoundDefault::Major => {
+            AddBoundsKind::Major => {
                 let leading_zeroes = version
                     .release()
                     .iter()
@@ -164,7 +164,7 @@ impl DependencyBoundDefault {
                     VersionSpecifier::less_than_version(upper_bound),
                 ])
             }
-            DependencyBoundDefault::Minor => {
+            AddBoundsKind::Minor => {
                 let leading_zeroes = version
                     .release()
                     .iter()
@@ -234,7 +234,7 @@ impl DependencyBoundDefault {
                     VersionSpecifier::less_than_version(upper_bound),
                 ])
             }
-            DependencyBoundDefault::Exact => {
+            AddBoundsKind::Exact => {
                 VersionSpecifiers::from_iter([VersionSpecifier::equals_version(version)])
             }
         }
@@ -683,7 +683,7 @@ impl PyProjectTomlMut {
         dependency_type: &DependencyType,
         index: usize,
         version: Version,
-        bound_kind: &DependencyBoundDefault,
+        bound_kind: &AddBoundsKind,
     ) -> Result<(), Error> {
         let group = match dependency_type {
             DependencyType::Production => self.set_project_dependency_bound()?,
@@ -1616,7 +1616,7 @@ fn split_specifiers(req: &str) -> (&str, &str) {
 
 #[cfg(test)]
 mod test {
-    use super::{split_specifiers, DependencyBoundDefault};
+    use super::{split_specifiers, AddBoundsKind};
     use std::str::FromStr;
     use uv_pep440::Version;
 
@@ -1649,7 +1649,7 @@ mod test {
         ];
 
         for (version, expected) in tests {
-            let actual = DependencyBoundDefault::Exact
+            let actual = AddBoundsKind::Exact
                 .specifiers(Version::from_str(version).unwrap())
                 .to_string();
             assert_eq!(actual, expected, "{version}");
@@ -1674,7 +1674,7 @@ mod test {
         ];
 
         for (version, expected) in tests {
-            let actual = DependencyBoundDefault::Lower
+            let actual = AddBoundsKind::Lower
                 .specifiers(Version::from_str(version).unwrap())
                 .to_string();
             assert_eq!(actual, expected, "{version}");
@@ -1701,7 +1701,7 @@ mod test {
         ];
 
         for (version, expected) in tests {
-            let actual = DependencyBoundDefault::Major
+            let actual = AddBoundsKind::Major
                 .specifiers(Version::from_str(version).unwrap())
                 .to_string();
             assert_eq!(actual, expected, "{version}");
@@ -1728,7 +1728,7 @@ mod test {
         ];
 
         for (version, expected) in tests {
-            let actual = DependencyBoundDefault::Minor
+            let actual = AddBoundsKind::Minor
                 .specifiers(Version::from_str(version).unwrap())
                 .to_string();
             assert_eq!(actual, expected, "{version}");

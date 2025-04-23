@@ -4,6 +4,17 @@
   "description": "Metadata and configuration for uv.",
   "type": "object",
   "properties": {
+    "add-bounds": {
+      "description": "The default version specifier when adding a dependency.\n\nIf no constraint or URL is provided for a dependency, a bound is added based on the latest compatible version of the package, e.g., `>=1.2.3`, unless `--frozen` is provided, in which case no resolution is performed.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/AddBoundsKind"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "allow-insecure-host": {
       "description": "Allow insecure connections to host.\n\nExpects to receive either a hostname (e.g., `localhost`), a host-port pair (e.g., `localhost:8080`), or a URL (e.g., `https://localhost`).\n\nWARNING: Hosts included in this list will not be verified against the system's certificate store. Only use `--allow-insecure-host` in a secure network with verified sources, as it bypasses SSL verification and could expose you to MITM attacks.",
       "type": [
@@ -13,17 +24,6 @@
       "items": {
         "$ref": "#/definitions/TrustedHost"
       }
-    },
-    "bounds": {
-      "description": "The default version specifier when adding a dependency.\n\nIf no constraint or URL is provided for a dependency, a bound is added based on the latest compatible version of the package, e.g., `>=1.2.3`, unless `--frozen` is provided, in which case no resolution is performed.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/DependencyBoundDefault"
-        },
-        {
-          "type": "null"
-        }
-      ]
     },
     "build-backend": {
       "description": "Configuration for the uv build backend.\n\nNote that those settings only apply when using the `uv_build` backend, other build backends (such as hatchling) have their own configuration.",
@@ -568,6 +568,39 @@
     }
   },
   "definitions": {
+    "AddBoundsKind": {
+      "description": "The default version specifier when adding a dependency.",
+      "oneOf": [
+        {
+          "description": "Only a lower bound, e.g., `>=1.2.3`.",
+          "type": "string",
+          "enum": [
+            "lower"
+          ]
+        },
+        {
+          "description": "Allow the same major version, similar to the semver caret, e.g., `>=1.2.3,<2.0.0`.\n\nLeading zeroes are skipped, e.g. `>=0.1.2,<0.2.0`.",
+          "type": "string",
+          "enum": [
+            "major"
+          ]
+        },
+        {
+          "description": "Allow the same minor version, similar to the semver tilde, e.g., `>=1.2.3,<1.3.0`.\n\nLeading zeroes are skipped, e.g. `>=0.1.2,<0.1.3`.",
+          "type": "string",
+          "enum": [
+            "minor"
+          ]
+        },
+        {
+          "description": "Pin the exact version, e.g., `==1.2.3`.\n\nThis option is not recommended, as uv provides a lockfiles that pins versions.",
+          "type": "string",
+          "enum": [
+            "exact"
+          ]
+        }
+      ]
+    },
     "AnnotationStyle": {
       "description": "Indicate the style of annotation comments, used to indicate the dependencies that requested each package.",
       "oneOf": [
@@ -787,39 +820,6 @@
             }
           },
           "additionalProperties": false
-        }
-      ]
-    },
-    "DependencyBoundDefault": {
-      "description": "The default version specifier when adding a dependency.",
-      "oneOf": [
-        {
-          "description": "Only a lower bound, e.g., `>=1.2.3`.",
-          "type": "string",
-          "enum": [
-            "lower"
-          ]
-        },
-        {
-          "description": "Allow the same major version, similar to the semver caret, e.g., `>=1.2.3,<2.0.0`.\n\nLeading zeroes are skipped, e.g. `>=0.1.2,<0.2.0`.",
-          "type": "string",
-          "enum": [
-            "major"
-          ]
-        },
-        {
-          "description": "Allow the same minor version, similar to the semver tilde does, `>=1.2.3,<1.3.0`.\n\nLeading zeroes are skipped, e.g. `>=0.1.2,<0.1.3`.",
-          "type": "string",
-          "enum": [
-            "minor"
-          ]
-        },
-        {
-          "description": "Pin the exact version, e.g., `==1.2.3`.\n\nThis option is not recommended, as uv provides a lockfiles that pins versions.",
-          "type": "string",
-          "enum": [
-            "exact"
-          ]
         }
       ]
     },
