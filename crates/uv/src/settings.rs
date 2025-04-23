@@ -1251,7 +1251,7 @@ pub(crate) struct AddSettings {
     pub(crate) editable: Option<bool>,
     pub(crate) extras: Vec<ExtraName>,
     pub(crate) raw_sources: bool,
-    pub(crate) bounds: DependencyBoundDefault,
+    pub(crate) bounds: Option<DependencyBoundDefault>,
     pub(crate) rev: Option<String>,
     pub(crate) tag: Option<String>,
     pub(crate) branch: Option<String>,
@@ -1358,9 +1358,7 @@ impl AddSettings {
             .map(|fs| fs.install_mirrors.clone())
             .unwrap_or_default();
 
-        let bounds = bounds
-            .or(filesystem.as_ref().and_then(|fs| fs.add.bounds))
-            .unwrap_or_default();
+        let bounds = bounds.or(filesystem.as_ref().and_then(|fs| fs.add.bounds));
 
         Self {
             locked,

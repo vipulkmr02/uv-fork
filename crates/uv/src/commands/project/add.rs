@@ -75,7 +75,7 @@ pub(crate) async fn add(
     editable: Option<bool>,
     dependency_type: DependencyType,
     raw_sources: bool,
-    build_kind: DependencyBoundDefault,
+    bounds: Option<DependencyBoundDefault>,
     indexes: Vec<Index>,
     rev: Option<String>,
     tag: Option<String>,
@@ -96,6 +96,12 @@ pub(crate) async fn add(
     printer: Printer,
     preview: PreviewMode,
 ) -> Result<ExitStatus> {
+    if bounds.is_some() && preview.is_disabled() {
+        warn_user_once!(
+            "The bounds option is in preview and its configuration may change in any future release."
+        );
+    }
+
     for source in &requirements {
         match source {
             RequirementsSource::PyprojectToml(_) => {
@@ -520,7 +526,7 @@ pub(crate) async fn add(
         locked,
         &dependency_type,
         raw_sources,
-        &build_kind,
+        &bounds.unwrap_or_default(),
         constraints,
         &settings,
         &network_settings,
