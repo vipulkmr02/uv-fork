@@ -437,10 +437,36 @@ impl AuthMiddleware {
             request = credentials.authenticate(request);
             Some(credentials)
         } else if maybe_index_url.is_some() {
-            // If this is a known index, we fall back to checking for the realm.
-            self.cache()
-                .get_realm(Realm::from(request.url()), credentials.to_username())
-                .or(Some(credentials))
+            // If this is a known index, we fall back to checking for the first URL segment or
+            // the realm.
+            let username = credentials.to_username();
+
+            let maybe_credentials = self.cache()
+                .get_first_index_segment_url(request.url(), &username)
+                .or_else(|| self.cache().get_realm(Realm::from(request.url()), username));
+
+            if let Some(creds) = maybe_credentials {
+                request = creds.authenticate(request);
+                // Do not insert already-cached credentials
+                None
+            } else {
+                Some(credentials)
+            }
+
+            // FIXME: Remove
+            // if let Some(credentials) = self.cache()
+            //     .get_first_index_segment_url(request.url(), &username)
+            // {
+            //     request = credentials.authenticate(request);
+            //     None
+            // } else if let Some(credentials) = self.cache()
+            //     .get_realm(Realm::from(request.url()), credentials.to_username())
+            // {
+            //     request = credentials.authenticate(request);
+            //     None
+            // } else {
+            //     Some(credentials)
+            // }
         } else {
             // If we don't find a password, we'll still attempt the request with the existing credentials
             Some(credentials)
@@ -1906,13 +1932,132 @@ mod tests {
         Ok(())
     }
 
+    /// Demonstrates that when an index' credentials are cached for the first segment of
+    /// its index URL, we find those credentials if they're not present in the keyring.
+    #[test(tokio::test)]
+    async fn test_credentials_from_keyring_shared_authentication_different_indexes_same_first_segment(
+    ) -> Result<(), Error> {
+        let username = "user";
+        let password_1 = "password_1";
+        let password_2 = "password_2";
+
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path_regex("/prefix_1.*"))
+            .and(basic_auth(username, password_1))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path_regex("/prefix_2.*"))
+            .and(basic_auth(username, password_2))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path_regex("/prefix_3.*"))
+            .and(basic_auth(username, password_2))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        Mock::given(method("GET"))
+            .respond_with(ResponseTemplate::new(401))
+            .mount(&server)
+            .await;
+
+        let base_url = Url::parse(&server.uri())?;
+        // Control URL we will use to set cached realm credentials
+        let index_1_base_url = base_url.join("prefix_1/")?;
+        // Test URL we will use to set (and use) first segment credentials
+        let index_2_base_url = base_url.join("prefix_2/")?;
+        // Control URL we will use to check cached realm credentials are as expected
+        let index_3_base_url = base_url.join("prefix_3/")?;
+        let indexes = Indexes::from_indexes(vec![
+            Index {
+                url: index_1_base_url.clone(),
+                root_url: index_1_base_url.clone(),
+                auth_policy: AuthPolicy::Auto,
+            },
+            Index {
+                url: index_2_base_url.clone(),
+                root_url: index_2_base_url.clone(),
+                auth_policy: AuthPolicy::Auto,
+            },
+        ]);
+
+        let client = test_client_builder()
+            .with(
+                AuthMiddleware::new()
+                    .with_cache(CredentialsCache::new())
+                    .with_keyring(Some(KeyringProvider::dummy([(
+                        index_1_base_url.clone(),
+                        username,
+                        password_1,
+                    )])))
+                    .with_indexes(indexes),
+            )
+            .build();
+
+        let mut index_2_url = index_2_base_url.clone().join("foo/bar")?;
+        index_2_url.set_username(username).unwrap();
+        index_2_url.set_password(Some(password_2)).unwrap();
+        // Send a request that will cache index URL, first segment, and realm credentials.
+        assert_eq!(
+            client.get(index_2_url.clone()).send().await?.status(),
+            200,
+            "A request with the same username but a different supplied password will ignore cached realm credentials."
+        );
+
+        // Send a request that demonstrates realm was cached.
+        let mut index_3_url = index_3_base_url.clone();
+        index_3_url.set_username(username).unwrap();
+        assert_eq!(
+            client.get(index_3_url.clone()).send().await?.status(),
+            200,
+            "A request without a password will use the latest cached realm password for the username"
+        );
+
+        // Send a request that will overwrite cached realm credentials.
+        let mut index_1_url = index_1_base_url.clone();
+        index_1_url.set_username(username).unwrap();
+        assert_eq!(
+            client.get(index_1_url.clone()).send().await?.status(),
+            200,
+            "A successful request will overwrite cached realm credentials"
+        );
+
+        // Send a request that demonstrates realm was overwritten.
+        assert_eq!(
+            client.get(index_3_url.clone()).send().await?.status(),
+            401,
+            "A request without a password will use the latest cached realm password for the username"
+        );
+
+        // Send a request that must use first segment credentials.
+        assert_eq!(
+            client
+                .get(index_2_base_url.join("other/path")?)
+                .send()
+                .await?
+                .status(),
+            200,
+            "Requests to other paths with the first segment prefix will succeed"
+        );
+
+        Ok(())
+    }
+
     fn indexes_for(url: &Url, policy: AuthPolicy) -> Indexes {
         let mut url = url.clone();
         url.set_password(None).ok();
         url.set_username("").ok();
         Indexes::from_indexes(vec![Index {
             url: url.clone(),
-            root_url: url.clone(),
+            root_url: url,
             auth_policy: policy,
         }])
     }

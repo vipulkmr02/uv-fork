@@ -39,6 +39,15 @@ impl CredentialsCache {
         }
     }
 
+    /// Return the credentials that should be used for the first segment of the URL, if any.
+    pub(crate) fn get_first_index_segment_url(
+        &self,
+        url: &Url,
+        username: &Username,
+    ) -> Option<Arc<Credentials>> {
+        first_segment_url(url).and_then(|url| self.get_url(&url, username))
+    }
+
     /// Return the credentials that should be used for a realm and username, if any.
     pub(crate) fn get_realm(&self, realm: Realm, username: Username) -> Option<Arc<Credentials>> {
         let realms = self.realms.read().unwrap();
@@ -109,8 +118,13 @@ impl CredentialsCache {
         // Insert an entry for requests with no username
         self.insert_realm((Realm::from(url), Username::none()), &credentials);
 
+        // Inserts an entry for the URL up to the first segment.
+        // TODO(john): We only need to do this for index URLs.
+        self.insert_first_segment_url(url, credentials.clone());
+
         // Insert an entry for the URL
         let mut urls = self.urls.write().unwrap();
+
         urls.insert(url, credentials);
     }
 
@@ -144,8 +158,32 @@ impl CredentialsCache {
 
         None
     }
+
+    /// If the URL path has a first segment, updates cached credentials for the URL
+    /// up to that segment.
+    fn insert_first_segment_url(&self, url: &Url, credentials: Arc<Credentials>) {
+        if let Some(url) = first_segment_url(url) {
+            let mut urls = self.urls.write().unwrap();
+            urls.insert(&url, credentials);
+        }
+    }
 }
 
+/// If the [`Url`] path has a first segment, returns a [`Url`] up to that segment.
+/// If not, returns [`None`].
+fn first_segment_url(url: &Url) -> Option<Url> {
+    let mut url = url.clone();
+    let first_segment = url
+        .path_segments()
+        .and_then(|segments| segments.collect::<Vec<_>>().first().copied())
+        .unwrap_or("");
+    if first_segment.is_empty() {
+        None
+    } else {
+        url.set_path(&format!("/{first_segment}"));
+        Some(url)
+    }
+}
 #[derive(Debug)]
 struct UrlTrie {
     states: Vec<TrieState>,
