@@ -197,7 +197,6 @@ impl Interpreter {
     // FIXME: Doc
     pub fn to_base_python_or_symlink_path(&self) -> Result<PathBuf, io::Error> {
         let base_python = self.to_base_python()?;
-        dbg!("base_python: {:?}", &base_python);
         if self.is_standalone() {
             if let Some(parent) = base_python.parent() {
                 #[cfg(unix)]
@@ -225,10 +224,8 @@ impl Interpreter {
                                 "Using directory symlink instead of base Python: {}",
                                 &path_link.display()
                             );
-                            dbg!("*** Using directory symlink instead of base Python");
                             return Ok(path_link);
                         }
-                        dbg!("*** Not if let Some(path) = bin.parent().and_then(Path::parent)");
                     }
                 }
                 #[cfg(windows)]
@@ -255,16 +252,12 @@ impl Interpreter {
                                 "Using directory symlink instead of base Python: {}",
                                 &path_link.display()
                             );
-                            dbg!("*** Using directory symlink instead of base Python");
                             return Ok(path_link);
                         }
-                        dbg!("*** Not if let Some(path) = bin.parent().and_then(Path::parent)");
                     }
                 }
             }
-            dbg!("*** Not if let Some(bin) = base_python.parent()");
         }
-        dbg!("*** Not standalone!");
         Ok(base_python)
     }
 

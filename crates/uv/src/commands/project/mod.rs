@@ -828,7 +828,6 @@ impl ProjectInterpreter {
         cache: &Cache,
         printer: Printer,
     ) -> Result<Self, ProjectError> {
-        dbg!("ProjectInterpreter::discover()");
         // Resolve the Python request and requirement for the workspace.
         let WorkspacePython {
             source,
@@ -876,7 +875,6 @@ impl ProjectInterpreter {
             }
             Err(uv_python::Error::Query(uv_python::InterpreterError::NotFound(path))) => {
                 if path.is_symlink() {
-                    dbg!("interpreter path: {:?}", &path);
                     let target_path = fs_err::read_link(&path)?;
                     warn_user!(
                         "Ignoring existing virtual environment linked to non-existent Python interpreter: {} -> {}",

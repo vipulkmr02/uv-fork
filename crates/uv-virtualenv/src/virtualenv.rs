@@ -165,12 +165,9 @@ pub(crate) fn create(
     // FIXME: In unix, replace base_python with symlink dir
     #[cfg(unix)]
     {
-        // dbg!("|||||||| base_python: {:?}", &base_python);
         // FIXME: Doc
         let executable_target = interpreter.to_base_python_or_symlink()?;
         uv_fs::replace_symlink(&executable_target, &executable)?;
-        dbg!("executable_target: {:?}", &executable_target);
-        dbg!("executable: {:?}", &executable);
         // uv_fs::replace_symlink(&base_python, &executable)?;
         uv_fs::replace_symlink(
             "python",
@@ -334,11 +331,6 @@ pub(crate) fn create(
         fs::write(scripts.join(name), activator)?;
     }
 
-    dbg!("Writing home key: {:?}", &python_home);
-    dbg!(
-        "Writing version key: {:?}",
-        &interpreter.markers().python_version()
-    );
     let mut pyvenv_cfg_data: Vec<(String, String)> = vec![
         (
             "home".to_string(),
