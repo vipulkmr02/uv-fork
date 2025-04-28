@@ -14,11 +14,7 @@ use uv_cli::{
     ToolUpgradeArgs,
 };
 use uv_cli::{
-    AddArgs, ColorChoice, ExternalCommand, GlobalArgs, InitArgs, ListFormat, LockArgs, Maybe,
-    PipCheckArgs, PipCompileArgs, PipFreezeArgs, PipInstallArgs, PipListArgs, PipShowArgs,
-    PipSyncArgs, PipTreeArgs, PipUninstallArgs, PythonFindArgs, PythonInstallArgs, PythonListArgs,
-    PythonListFormat, PythonPinArgs, PythonUninstallArgs, RemoveArgs, RunArgs, SyncArgs,
-    ToolDirArgs, ToolInstallArgs, ToolListArgs, ToolRunArgs, ToolUninstallArgs, TreeArgs, VenvArgs,
+    AddArgs, ColorChoice, ExternalCommand, GlobalArgs, InitArgs, ListFormat, LockArgs, Maybe, PipCheckArgs, PipCompileArgs, PipFreezeArgs, PipInstallArgs, PipListArgs, PipShowArgs, PipSyncArgs, PipTreeArgs, PipUninstallArgs, PythonFindArgs, PythonInstallArgs, PythonListArgs, PythonListFormat, PythonPinArgs, PythonUninstallArgs, PythonUpgradeArgs, RemoveArgs, RunArgs, SyncArgs, ToolDirArgs, ToolInstallArgs, ToolListArgs, ToolRunArgs, ToolUninstallArgs, TreeArgs, VenvArgs
 };
 use uv_client::Connectivity;
 use uv_configuration::{
@@ -966,6 +962,53 @@ impl PythonInstallSettings {
             python_install_mirror: python_mirror,
             pypy_install_mirror: pypy_mirror,
             python_downloads_json_url,
+            default,
+        }
+    }
+}
+
+/// The resolved settings to use for a `python upgrade` invocation.
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone)]
+pub(crate) struct PythonUpgradeSettings {
+    pub(crate) install_dir: Option<PathBuf>,
+    pub(crate) targets: Vec<String>,
+    pub(crate) force: bool,
+    pub(crate) python_install_mirror: Option<String>,
+    pub(crate) pypy_install_mirror: Option<String>,
+    pub(crate) default: bool,
+}
+
+impl PythonUpgradeSettings {
+    /// Resolve the [`PythonUpgradeSettings`] from the CLI and filesystem configuration.
+    #[allow(clippy::needless_pass_by_value)]
+    pub(crate) fn resolve(args: PythonUpgradeArgs, filesystem: Option<FilesystemOptions>) -> Self {
+        let options = filesystem.map(FilesystemOptions::into_options);
+        let (python_mirror, pypy_mirror) = match options {
+            Some(options) => (
+                options.install_mirrors.python_install_mirror,
+                options.install_mirrors.pypy_install_mirror,
+            ),
+            None => (None, None),
+        };
+        let python_mirror = args.mirror.or(python_mirror);
+        let pypy_mirror = args.pypy_mirror.or(pypy_mirror);
+
+        let PythonUpgradeArgs {
+            install_dir,
+            targets,
+            force,
+            mirror: _,
+            pypy_mirror: _,
+            default,
+        } = args;
+
+        Self {
+            install_dir,
+            targets,
+            force,
+            python_install_mirror: python_mirror,
+            pypy_install_mirror: pypy_mirror,
             default,
         }
     }

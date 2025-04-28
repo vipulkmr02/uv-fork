@@ -70,6 +70,8 @@ impl InstallRequest {
                 Err(err) => return Err(err.into()),
             };
 
+        // dbg!("download from download_request: {:?}", &download.key().version());
+
         Ok(Self {
             request,
             download_request,
@@ -78,7 +80,13 @@ impl InstallRequest {
     }
 
     fn matches_installation(&self, installation: &ManagedPythonInstallation) -> bool {
+        dbg!("Installation key: {:?}", installation.key().version());
+        dbg!("-- Download: {:?}", self.download_request.version());
         self.download_request.satisfied_by_key(installation.key())
+    }
+
+    fn managed_download_matches_installation(&self, installation: &ManagedPythonInstallation) -> bool {
+        self.download.key() == installation.key()
     }
 }
 
@@ -130,6 +138,7 @@ pub(crate) async fn install(
     install_dir: Option<PathBuf>,
     targets: Vec<String>,
     reinstall: bool,
+    upgrade: bool,
     force: bool,
     python_install_mirror: Option<String>,
     pypy_install_mirror: Option<String>,
@@ -183,6 +192,8 @@ pub(crate) async fn install(
             .map(|a| InstallRequest::new(a, python_downloads_json_url.as_deref()))
             .collect::<Result<Vec<_>>>()?
     };
+
+    // dbg!("Requests (for minor versions, already resolved to latest patch for .download field): {:?}", &requests);
 
     let Some(first_request) = requests.first() else {
         return Ok(ExitStatus::Success);
@@ -256,12 +267,26 @@ pub(crate) async fn install(
             }
         }
         (vec![], unsatisfied)
+    // FIXME: Restore?
+    // } else if upgrade {
+    //     dbg!("upgrade requests: {:?}", &requests);
+    //     // FIXME Check if we already have the latest download version
+    //     // Do we have an existing installation with the exact same patch as the download patch?
+    //     (vec![], requests.iter().map(|req| Cow::Borrowed(req)).collect::<Vec<_>>())
     } else {
+        dbg!("non-upgrade requests: {:?}", &requests);
         // If we can find one existing installation that matches the request, it is satisfied
         requests.iter().partition_map(|request| {
             if let Some(installation) = existing_installations
                 .iter()
-                .find(|installation| request.matches_installation(installation))
+                .find(|installation| {
+                    if upgrade {
+                        // FIXME: Improve
+                        request.managed_download_matches_installation(installation)
+                    } else {
+                        request.matches_installation(installation)
+                    }
+                })
             {
                 debug!(
                     "Found `{}` for request `{}`",

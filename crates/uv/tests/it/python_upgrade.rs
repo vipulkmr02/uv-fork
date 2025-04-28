@@ -23,14 +23,15 @@ fn python_upgrade() {
     ");
 
     // Upgrade patch version
-    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r###"
+    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r"
     success: true
     exit_code: 0
     ----- stdout -----
 
     ----- stderr -----
-    Python is already installed. Use `uv python install <request>` to install another version.
-    "###);
+    Installed Python 3.10.17 in [TIME]
+     + cpython-3.10.17-[PLATFORM]
+    ");
 
     // Should be a no-op when already upgraded
     uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r###"
@@ -67,8 +68,9 @@ fn python_upgrade_transparent_from_venv() {
     ----- stdout -----
 
     ----- stderr -----
-    Installed Python 3.10.8 in [TIME]
-     + cpython-3.10.8-[PLATFORM]
+    Using CPython 3.10.8
+    Creating virtual environment at: .venv
+    Activate with: source .venv/[BIN]/activate
     ");
 
     uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
@@ -82,20 +84,21 @@ fn python_upgrade_transparent_from_venv() {
     );
 
     // Upgrade patch version
-    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r###"
+    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r"
     success: true
     exit_code: 0
     ----- stdout -----
 
     ----- stderr -----
-    Python is already installed. Use `uv python install <request>` to install another version.
-    "###);
+    Installed Python 3.10.17 in [TIME]
+     + cpython-3.10.17-[PLATFORM]
+    ");
 
     uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
     success: true
     exit_code: 0
     ----- stdout -----
-    Python 3.10.10
+    Python 3.10.17
 
     ----- stderr -----
     "
@@ -143,14 +146,15 @@ fn python_upgrade_ignored_with_python_pin() {
     ");
 
     // Upgrade patch version
-    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r###"
+    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r"
     success: true
     exit_code: 0
     ----- stdout -----
 
     ----- stderr -----
-    Python is already installed. Use `uv python install <request>` to install another version.
-    "###);
+    Installed Python 3.10.17 in [TIME]
+     + cpython-3.10.17-[PLATFORM]
+    ");
 
     // Should respect patch version venv was created with
     uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
@@ -189,19 +193,21 @@ fn python_upgrade_ignored_with_venv_patch_specification() {
     ----- stdout -----
 
     ----- stderr -----
-    Installed Python 3.10.8 in [TIME]
-     + cpython-3.10.8-[PLATFORM]
+    Using CPython 3.10.8
+    Creating virtual environment at: .venv
+    Activate with: source .venv/[BIN]/activate
     ");
 
     // Upgrade patch version
-    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r###"
+    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r"
     success: true
     exit_code: 0
     ----- stdout -----
 
     ----- stderr -----
-    Python is already installed. Use `uv python install <request>` to install another version.
-    "###);
+    Installed Python 3.10.17 in [TIME]
+     + cpython-3.10.17-[PLATFORM]
+    ");
 
     // Should respect patch version venv was created with
     uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
