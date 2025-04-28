@@ -507,57 +507,56 @@ impl ManagedPythonInstallation {
     /// Ensure the environment contains the canonical Python executable names.
     pub fn ensure_minor_version_link(&self) -> Result<(), Error> {
         // if cfg!(unix) {
-            let python = self.executable(false);
-            let version_name = format!("python{}.{}", self.key.major, self.key.minor);
-            let python_link = self.path().with_file_name(&version_name);
-            let link_dir = self.path().with_file_name(format!("{}-dir", &version_name));
+        let python = self.executable(false);
+        let version_name = format!("python{}.{}", self.key.major, self.key.minor);
+        let python_link = self.path().with_file_name(&version_name);
+        let link_dir = self.path().with_file_name(format!("{}-dir", &version_name));
 
-            match replace_symlink(self.path(), &link_dir) {
-                Ok(()) => {
-                    // FIXME: Update
-                    debug!(
-                        "Created link {} -> {}",
-                        link_dir.user_display(),
-                        python.user_display(),
-                    );
-                }
-                // FIXME: Update these errors!
-                _ => {} // Err(err) if err.kind() == io::ErrorKind::NotFound => {
-                        //     return Err(Error::MissingExecutable(python.clone()))
-                        // }
-                        // Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
-                        // Err(err) => {
-                        //     return Err(Error::CanonicalizeExecutable {
-                        //         from: executable,
-                        //         to: python,
-                        //         err,
-                        //     })
-                        // }
-            };
+        match replace_symlink(self.path(), &link_dir) {
+            Ok(()) => {
+                // FIXME: Update
+                debug!(
+                    "Created link {} -> {}",
+                    link_dir.user_display(),
+                    python.user_display(),
+                );
+            }
+            // FIXME: Update these errors!
+            _ => {} // Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                    //     return Err(Error::MissingExecutable(python.clone()))
+                    // }
+                    // Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
+                    // Err(err) => {
+                    //     return Err(Error::CanonicalizeExecutable {
+                    //         from: executable,
+                    //         to: python,
+                    //         err,
+                    //     })
+                    // }
+        }
 
-            match replace_symlink(&python, &python_link) {
-                Ok(()) => {
-                    // FIXME: Update
-                    debug!(
-                        "Created link {} -> {}",
-                        link_dir.user_display(),
-                        python.user_display(),
-                    );
-                }
-                // FIXME: Update these errors!
-                _ => {} // Err(err) if err.kind() == io::ErrorKind::NotFound => {
-                        //     return Err(Error::MissingExecutable(python.clone()))
-                        // }
-                        // Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
-                        // Err(err) => {
-                        //     return Err(Error::CanonicalizeExecutable {
-                        //         from: executable,
-                        //         to: python,
-                        //         err,
-                        //     })
-                        // }
-            };
-        // }
+        match replace_symlink(&python, &python_link) {
+            Ok(()) => {
+                // FIXME: Update
+                debug!(
+                    "Created link {} -> {}",
+                    link_dir.user_display(),
+                    python.user_display(),
+                );
+            }
+            // FIXME: Update these errors!
+            _ => {} // Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                    //     return Err(Error::MissingExecutable(python.clone()))
+                    // }
+                    // Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
+                    // Err(err) => {
+                    //     return Err(Error::CanonicalizeExecutable {
+                    //         from: executable,
+                    //         to: python,
+                    //         err,
+                    //     })
+                    // }
+        }
 
         Ok(())
     }

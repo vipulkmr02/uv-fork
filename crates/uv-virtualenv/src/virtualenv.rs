@@ -166,7 +166,8 @@ pub(crate) fn create(
     #[cfg(unix)]
     {
         // FIXME: Doc
-        let executable_target = interpreter.to_base_python_or_symlink()?;
+        // let executable_target = interpreter.to_base_python_or_symlink()?;
+        let executable_target = interpreter.to_base_python_or_symlink_path()?;
         uv_fs::replace_symlink(&executable_target, &executable)?;
         // uv_fs::replace_symlink(&base_python, &executable)?;
         uv_fs::replace_symlink(

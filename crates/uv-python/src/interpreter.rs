@@ -139,62 +139,6 @@ impl Interpreter {
     }
 
     // FIXME: Doc
-    pub fn to_base_python_or_symlink(&self) -> Result<PathBuf, io::Error> {
-        let base_python = self.to_base_python()?;
-        if self.is_standalone() {
-            if let Some(parent) = base_python.parent() {
-                #[cfg(unix)]
-                {
-                    if parent
-                        .components()
-                        .last()
-                        .is_some_and(|c| c.as_os_str() == "bin")
-                    {
-                        if let Some(path) = parent.parent().and_then(Path::parent) {
-                            let link = path
-                                .to_path_buf()
-                                .join(format!(
-                                    "python{}.{}",
-                                    self.python_major(),
-                                    self.python_minor(),
-                                ));
-                            debug!(
-                                "Using symlink instead of base Python: {}",
-                                &link.display()
-                            );
-                            return Ok(link);
-                        }
-                    }
-                }
-                #[cfg(windows)]
-                {
-                    if parent
-                        .components()
-                        .last()
-                        .is_some()
-                    {
-                        if let Some(path) = parent.parent() {
-                            let link = path
-                                .to_path_buf()
-                                .join(format!(
-                                    "python{}.{}",
-                                    self.python_major(),
-                                    self.python_minor(),
-                                ));
-                            debug!(
-                                "Using symlink instead of base Python: {}",
-                                &link.display()
-                            );
-                            return Ok(link);
-                        }
-                    }
-                }
-            }
-        }
-        Ok(base_python)
-    }
-
-    // FIXME: Doc
     pub fn to_base_python_or_symlink_path(&self) -> Result<PathBuf, io::Error> {
         let base_python = self.to_base_python()?;
         if self.is_standalone() {
@@ -203,7 +147,7 @@ impl Interpreter {
                 {
                     if parent
                         .components()
-                        .last()
+                        .next_back()
                         .is_some_and(|c| c.as_os_str() == "bin")
                     {
                         if let Some(path) = parent.parent().and_then(Path::parent) {
@@ -230,11 +174,7 @@ impl Interpreter {
                 }
                 #[cfg(windows)]
                 {
-                    if parent
-                        .components()
-                        .last()
-                        .is_some()
-                    {
+                    if parent.components().last().is_some() {
                         if let Some(path) = parent.parent() {
                             let path_link = path
                                 .to_path_buf()

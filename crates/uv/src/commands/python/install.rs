@@ -80,12 +80,14 @@ impl InstallRequest {
     }
 
     fn matches_installation(&self, installation: &ManagedPythonInstallation) -> bool {
-        dbg!("Installation key: {:?}", installation.key().version());
-        dbg!("-- Download: {:?}", self.download_request.version());
         self.download_request.satisfied_by_key(installation.key())
     }
 
-    fn managed_download_matches_installation(&self, installation: &ManagedPythonInstallation) -> bool {
+    // FIXME: Rename
+    fn managed_download_matches_installation(
+        &self,
+        installation: &ManagedPythonInstallation,
+    ) -> bool {
         self.download.key() == installation.key()
     }
 }
@@ -267,27 +269,17 @@ pub(crate) async fn install(
             }
         }
         (vec![], unsatisfied)
-    // FIXME: Restore?
-    // } else if upgrade {
-    //     dbg!("upgrade requests: {:?}", &requests);
-    //     // FIXME Check if we already have the latest download version
-    //     // Do we have an existing installation with the exact same patch as the download patch?
-    //     (vec![], requests.iter().map(|req| Cow::Borrowed(req)).collect::<Vec<_>>())
     } else {
-        dbg!("non-upgrade requests: {:?}", &requests);
         // If we can find one existing installation that matches the request, it is satisfied
         requests.iter().partition_map(|request| {
-            if let Some(installation) = existing_installations
-                .iter()
-                .find(|installation| {
-                    if upgrade {
-                        // FIXME: Improve
-                        request.managed_download_matches_installation(installation)
-                    } else {
-                        request.matches_installation(installation)
-                    }
-                })
-            {
+            if let Some(installation) = existing_installations.iter().find(|installation| {
+                if upgrade {
+                    // FIXME: Improve
+                    request.managed_download_matches_installation(installation)
+                } else {
+                    request.matches_installation(installation)
+                }
+            }) {
                 debug!(
                     "Found `{}` for request `{}`",
                     installation.key().green(),

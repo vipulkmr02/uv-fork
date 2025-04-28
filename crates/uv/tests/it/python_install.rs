@@ -1,6 +1,5 @@
 use std::{env, path::Path, process::Command};
 
-use anyhow::Result;
 use crate::common::{uv_snapshot, TestContext};
 use assert_fs::{
     assert::PathAssert,
@@ -1374,7 +1373,7 @@ fn python_install_cached() {
 }
 
 #[test]
-fn install_transparent_patch_upgrade_uv_venv() -> Result<()> {
+fn install_transparent_patch_upgrade_uv_venv() {
     let context = TestContext::new_with_versions(&["3.13"])
         .with_filtered_python_keys()
         .with_filtered_exe_suffix()
@@ -1436,29 +1435,16 @@ fn install_transparent_patch_upgrade_uv_venv() -> Result<()> {
     ----- stderr -----
     "
     );
-
-    Ok(())
 }
 
 #[test]
-fn install_no_transparent_with_patch_uv_venv() -> Result<()> {
+fn install_no_transparent_with_patch_uv_venv() {
     let context = TestContext::new_with_versions(&["3.13"])
         .with_filtered_python_keys()
         .with_filtered_exe_suffix()
         .with_managed_python_dirs()
         .with_filtered_python_names()
         .with_filtered_python_install_bin();
-
-    // FIXME Remove
-    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
-    success: true
-    exit_code: 0
-    ----- stdout -----
-    Python 3.13.[X]
-
-    ----- stderr -----
-    "
-    );
 
     uv_snapshot!(context.filters(), context.python_install().arg("3.12.9"), @r"
     success: true
@@ -1471,17 +1457,7 @@ fn install_no_transparent_with_patch_uv_venv() -> Result<()> {
     "
     );
 
-    // FIXME Remove
-    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
-    success: true
-    exit_code: 0
-    ----- stdout -----
-    Python 3.12.9
-
-    ----- stderr -----
-    "
-    );
-
+    // Create a virtual environment with a patch version
     uv_snapshot!(context.filters(), context.venv().arg("-p").arg("3.12.9")
         .arg(context.venv.as_os_str()), @r"
     success: true
@@ -1525,12 +1501,10 @@ fn install_no_transparent_with_patch_uv_venv() -> Result<()> {
     ----- stderr -----
     "
     );
-
-    Ok(())
 }
 
 #[test]
-fn install_transparent_patch_upgrade_venv_module() -> Result<()> {
+fn install_transparent_patch_upgrade_venv_module() {
     let context = TestContext::new_with_versions(&[])
         .with_filtered_python_keys()
         .with_filtered_exe_suffix()
@@ -1601,6 +1575,4 @@ fn install_transparent_patch_upgrade_venv_module() -> Result<()> {
     ----- stderr -----
     "
     );
-
-    Ok(())
 }

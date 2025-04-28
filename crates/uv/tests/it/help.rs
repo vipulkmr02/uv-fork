@@ -909,6 +909,7 @@ fn help_unknown_subsubcommand() {
     error: There is no command `foobar` for `uv python`. Did you mean one of:
         list
         install
+        upgrade
         find
         pin
         dir
