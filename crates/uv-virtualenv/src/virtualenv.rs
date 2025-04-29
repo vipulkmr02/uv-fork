@@ -146,8 +146,13 @@ pub(crate) fn create(
     // FIXME: In unix use symlink
     // Per PEP 405, the Python `home` is the parent directory of the interpreter.
     // FIXME: Doc
-    let python_home = interpreter
-        .to_base_python_or_symlink_path()?
+    // FIXME !@
+    let executable_target = if interpreter.is_standalone() {
+        interpreter.symlink_path_from_base_python(base_python.clone())?
+    } else {
+        base_python.clone()
+    };
+    let python_home = executable_target
         .parent()
         .ok_or_else(|| {
             io::Error::new(
@@ -166,9 +171,8 @@ pub(crate) fn create(
     #[cfg(unix)]
     {
         // FIXME: Doc
-        // let executable_target = interpreter.to_base_python_or_symlink()?;
-        let executable_target = interpreter.to_base_python_or_symlink_path()?;
         uv_fs::replace_symlink(&executable_target, &executable)?;
+        // FIXME !@ Remove
         // uv_fs::replace_symlink(&base_python, &executable)?;
         uv_fs::replace_symlink(
             "python",
@@ -347,6 +351,7 @@ pub(crate) fn create(
         ("uv".to_string(), version().to_string()),
         (
             "version_info".to_string(),
+            // FIXME !@
             interpreter.markers().python_version().string.clone(),
         ),
         (

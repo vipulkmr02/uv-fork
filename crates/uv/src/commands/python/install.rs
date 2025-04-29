@@ -70,8 +70,6 @@ impl InstallRequest {
                 Err(err) => return Err(err.into()),
             };
 
-        // dbg!("download from download_request: {:?}", &download.key().version());
-
         Ok(Self {
             request,
             download_request,
@@ -194,8 +192,6 @@ pub(crate) async fn install(
             .map(|a| InstallRequest::new(a, python_downloads_json_url.as_deref()))
             .collect::<Result<Vec<_>>>()?
     };
-
-    // dbg!("Requests (for minor versions, already resolved to latest patch for .download field): {:?}", &requests);
 
     let Some(first_request) = requests.first() else {
         return Ok(ExitStatus::Success);
@@ -383,6 +379,7 @@ pub(crate) async fn install(
         installation.ensure_externally_managed()?;
         installation.ensure_sysconfig_patched()?;
         installation.ensure_canonical_executables()?;
+        // FIXME !@
         installation.ensure_minor_version_link()?;
         if let Err(e) = installation.ensure_dylib_patched() {
             e.warn_user(installation);
