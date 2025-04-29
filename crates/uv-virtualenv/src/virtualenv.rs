@@ -3,7 +3,7 @@
 use std::env::consts::EXE_SUFFIX;
 use std::io;
 use std::io::{BufWriter, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use fs_err as fs;
 use fs_err::File;
@@ -12,6 +12,7 @@ use tracing::debug;
 
 use uv_fs::{cachedir, Simplified, CWD};
 use uv_pypi_types::Scheme;
+use uv_python::managed::create_bin_link;
 use uv_python::{Interpreter, VirtualEnvironment};
 use uv_shell::escape_posix_for_single_quotes;
 use uv_version::version;
@@ -148,10 +149,14 @@ pub(crate) fn create(
     // FIXME: Doc
     // FIXME !@
     let executable_target = if interpreter.is_standalone() {
+        dbg!("is_standalone: getting symlink path!");
         interpreter.symlink_path_from_base_python(base_python.clone())?
     } else {
+        dbg!("NOT is_standalone!!!");
         base_python.clone()
     };
+    dbg!("executable_target: {:?}", &executable_target);
+
     let python_home = executable_target
         .parent()
         .ok_or_else(|| {
@@ -162,6 +167,8 @@ pub(crate) fn create(
         })?
         .to_path_buf();
     let python_home = python_home.as_path();
+
+    dbg!("python_home: {:?}", &python_home);
 
     // Different names for the python interpreter
     fs::create_dir_all(&scripts)?;
@@ -201,91 +208,130 @@ pub(crate) fn create(
     }
 
     // No symlinking on Windows, at least not on a regular non-dev non-admin Windows install.
+    // FIXME !@: Instead of using the copy method, we need the trampoline method except
+    // passing in symlink path to create the launcher
     if cfg!(windows) {
-        copy_launcher_windows(
-            WindowsExecutable::Python,
+        create_venv_trampoline_windows(
+            executable_target.clone(),
+            &[WindowsExecutable::Python],
             interpreter,
-            &base_python,
             &scripts,
-            python_home,
         )?;
 
         if interpreter.markers().implementation_name() == "graalpy" {
-            copy_launcher_windows(
-                WindowsExecutable::GraalPy,
+            create_venv_trampoline_windows(
+                executable_target.clone(),
+                &[
+                    WindowsExecutable::GraalPy,
+                    WindowsExecutable::PythonMajor,
+                    WindowsExecutable::Pythonw,
+                ],
                 interpreter,
-                &base_python,
                 &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PythonMajor,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
-            )?;
-        } else {
-            copy_launcher_windows(
-                WindowsExecutable::Pythonw,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
             )?;
         }
 
         if interpreter.markers().implementation_name() == "pypy" {
-            copy_launcher_windows(
-                WindowsExecutable::PythonMajor,
+            create_venv_trampoline_windows(
+                executable_target.clone(),
+                &[
+                    WindowsExecutable::PythonMajor,
+                    WindowsExecutable::PythonMajorMinor,
+                    WindowsExecutable::PyPy,
+                    WindowsExecutable::PyPyMajor,
+                    WindowsExecutable::PyPyMajorMinor,
+                    WindowsExecutable::PyPyw,
+                    WindowsExecutable::PyPyMajorMinorw,
+                ],
                 interpreter,
-                &base_python,
                 &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PythonMajorMinor,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PyPy,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PyPyMajor,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PyPyMajorMinor,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PyPyw,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
-            )?;
-            copy_launcher_windows(
-                WindowsExecutable::PyPyMajorMinorw,
-                interpreter,
-                &base_python,
-                &scripts,
-                python_home,
             )?;
         }
+
+        // copy_launcher_windows(
+        //     WindowsExecutable::Python,
+        //     interpreter,
+        //     &base_python,
+        //     &scripts,
+        //     python_home,
+        // )?;
+
+        // if interpreter.markers().implementation_name() == "graalpy" {
+        //     copy_launcher_windows(
+        //         WindowsExecutable::GraalPy,
+        //         interpreter,
+        //         &base_python,
+        //         &scripts,
+        //         python_home,
+        //     )?;
+        //     copy_launcher_windows(
+        //         WindowsExecutable::PythonMajor,
+        //         interpreter,
+        //         &base_python,
+        //         &scripts,
+        //         python_home,
+        //     )?;
+        // } else {
+        //     copy_launcher_windows(
+        //         WindowsExecutable::Pythonw,
+        //         interpreter,
+        //         &base_python,
+        //         &scripts,
+        //         python_home,
+        //     )?;
+        // }
+
+        // if interpreter.markers().implementation_name() == "pypy" {
+        //     copy_launcher_windows(
+        //         WindowsExecutable::PythonMajor,
+        //         interpreter,
+        //         &base_python,
+        //         &scripts,
+        //         python_home,
+        //     )?;
+        //     copy_launcher_windows(
+        //         WindowsExecutable::PythonMajorMinor,
+        //         interpreter,
+        //         &base_python,
+        //         &scripts,
+        //         python_home,
+        //     )?;
+        //     copy_launcher_windows(
+        //         WindowsExecutable::PyPy,
+        //         interpreter,
+        //         &base_python,
+        //         &scripts,
+        //         python_home,
+        //     )?;
+        //     copy_launcher_windows(
+        //         WindowsExecutable::PyPyMajor,
+        //         interpreter,
+        //         &base_python,
+        //         &scripts,
+        //         python_home,
+        //     )?;
+        //     copy_launcher_windows(
+        //         WindowsExecutable::PyPyMajorMinor,
+        //         interpreter,
+        //         &base_python,
+        //         &scripts,
+        //         python_home,
+        //     )?;
+        //     copy_launcher_windows(
+        //         WindowsExecutable::PyPyw,
+        //         interpreter,
+        //         &base_python,
+        //         &scripts,
+        //         python_home,
+        //     )?;
+        //     copy_launcher_windows(
+        //         WindowsExecutable::PyPyMajorMinorw,
+        //         interpreter,
+        //         &base_python,
+        //         &scripts,
+        //         python_home,
+        //     )?;
+        // }
     }
 
     #[cfg(not(any(unix, windows)))]
@@ -509,6 +555,19 @@ impl WindowsExecutable {
             WindowsExecutable::GraalPy => "venvlauncher.exe",
         }
     }
+}
+
+fn create_venv_trampoline_windows(
+    executable: PathBuf,
+    executable_kinds: &[WindowsExecutable],
+    interpreter: &Interpreter,
+    scripts: &Path,
+) -> Result<(), Error> {
+    for kind in executable_kinds {
+        let target = scripts.join(kind.exe(interpreter));
+        create_bin_link(target.as_path(), executable.clone()).expect("FIXME");
+    }
+    Ok(())
 }
 
 /// <https://github.com/python/cpython/blob/d457345bbc6414db0443819290b04a9a4333313d/Lib/venv/__init__.py#L261-L267>

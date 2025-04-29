@@ -143,6 +143,7 @@ impl Interpreter {
         &self,
         base_python: PathBuf,
     ) -> Result<PathBuf, io::Error> {
+        dbg!("base_python: {:?}", &base_python);
         if let Some(parent) = base_python.parent() {
             #[cfg(unix)]
             {
@@ -175,8 +176,10 @@ impl Interpreter {
             }
             #[cfg(windows)]
             {
-                if parent.components().last().is_some() {
+                if parent.components().next_back().is_some() {
+                    dbg!("win1");
                     if let Some(path) = parent.parent() {
+                        dbg!("win2");
                         let path_link = path
                             .to_path_buf()
                             .join(format!(
@@ -189,6 +192,10 @@ impl Interpreter {
                                 self.python_major(),
                                 self.python_minor()
                             ));
+                        dbg!(
+                            "Using directory symlink instead of base Python: {}",
+                            &path_link.display()
+                        );
                         debug!(
                             "Using directory symlink instead of base Python: {}",
                             &path_link.display()
@@ -196,8 +203,10 @@ impl Interpreter {
                         return Ok(path_link);
                     }
                 }
+                dbg!("win0");
             }
         }
+        dbg!("returning just base_python");
         Ok(base_python)
     }
 

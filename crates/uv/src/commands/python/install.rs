@@ -390,10 +390,13 @@ pub(crate) async fn install(
             continue;
         }
 
+        // FIXME: We need to install to bin but use the symlink path for Windows launcher
         let bin = bin
             .as_ref()
             .expect("We should have a bin directory with preview enabled")
             .as_path();
+
+        dbg!("bin: {:?} about to create_bin_links", &bin);
 
         create_bin_links(
             installation,
