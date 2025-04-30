@@ -544,6 +544,7 @@ impl ArchivedCachePolicy {
     ///
     /// [RFC 9111 S3]: https://www.rfc-editor.org/rfc/rfc9111.html#section-3
     pub fn is_storable(&self) -> bool {
+        dbg!("Response: {:?}", &self.response);
         // In the absence of other signals, we are limited to caching responses
         // with a code that is heuristically cacheable as per [RFC 9110 S15.1].
         //
