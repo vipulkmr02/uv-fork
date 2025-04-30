@@ -396,7 +396,7 @@ pub(crate) async fn install(
             .expect("We should have a bin directory with preview enabled")
             .as_path();
 
-        dbg!("bin: {:?} about to create_bin_links", &bin);
+        // dbg!("bin: {:?} about to create_bin_links", &bin);
 
         create_bin_links(
             installation,

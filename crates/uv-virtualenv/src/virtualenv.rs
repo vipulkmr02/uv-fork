@@ -148,14 +148,12 @@ pub(crate) fn create(
     // Per PEP 405, the Python `home` is the parent directory of the interpreter.
     // FIXME: Doc
     // FIXME !@
-    let executable_target = if interpreter.is_standalone() {
-        dbg!("is_standalone: getting symlink path!");
+    // FIXME: This uses Zanie's is_managed
+    let executable_target = if interpreter.is_managed() {
         interpreter.symlink_path_from_base_python(base_python.clone())?
     } else {
-        dbg!("NOT is_standalone!!!");
         base_python.clone()
     };
-    dbg!("executable_target: {:?}", &executable_target);
 
     let python_home = executable_target
         .parent()
@@ -168,7 +166,7 @@ pub(crate) fn create(
         .to_path_buf();
     let python_home = python_home.as_path();
 
-    dbg!("python_home: {:?}", &python_home);
+    // dbg!("python_home: {:?}", &python_home);
 
     // Different names for the python interpreter
     fs::create_dir_all(&scripts)?;

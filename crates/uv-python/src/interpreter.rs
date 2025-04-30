@@ -26,6 +26,7 @@ use uv_platform_tags::{Tags, TagsError};
 use uv_pypi_types::{ResolverMarkerEnvironment, Scheme};
 
 use crate::implementation::LenientImplementationName;
+use crate::managed::ManagedPythonInstallations;
 use crate::platform::{Arch, Libc, Os};
 use crate::pointer_size::PointerSize;
 use crate::{
@@ -143,7 +144,6 @@ impl Interpreter {
         &self,
         base_python: PathBuf,
     ) -> Result<PathBuf, io::Error> {
-        dbg!("base_python: {:?}", &base_python);
         if let Some(parent) = base_python.parent() {
             #[cfg(unix)]
             {
@@ -177,9 +177,7 @@ impl Interpreter {
             #[cfg(windows)]
             {
                 if parent.components().next_back().is_some() {
-                    dbg!("win1");
                     if let Some(path) = parent.parent() {
-                        dbg!("win2");
                         let path_link = path
                             .to_path_buf()
                             .join(format!(
@@ -192,10 +190,6 @@ impl Interpreter {
                                 self.python_major(),
                                 self.python_minor()
                             ));
-                        dbg!(
-                            "Using directory symlink instead of base Python: {}",
-                            &path_link.display()
-                        );
                         debug!(
                             "Using directory symlink instead of base Python: {}",
                             &path_link.display()
@@ -203,10 +197,8 @@ impl Interpreter {
                         return Ok(path_link);
                     }
                 }
-                dbg!("win0");
             }
         }
-        dbg!("returning just base_python");
         Ok(base_python)
     }
 
@@ -333,6 +325,22 @@ impl Interpreter {
     /// Returns `true` if the environment is a `--prefix` environment.
     pub fn is_prefix(&self) -> bool {
         self.prefix.is_some()
+    }
+
+    // FIXME: This is from Zanie's PR https://github.com/astral-sh/uv/pull/7934/files#diff-40b5f94e00ec244afb2a88a5f7c63b9e6134dc0fc813526540a14ffff7fabd7bR267-R281
+    /// Returns `true` if this interpreter is managed by uv.
+    ///
+    /// Returns `false` if we cannot determine the path of the uv managed Python interpreters.
+    pub fn is_managed(&self) -> bool {
+        let Ok(installations) = ManagedPythonInstallations::from_settings(None) else {
+            return false;
+        };
+
+        installations
+            .find_all()
+            .into_iter()
+            .flatten()
+            .any(|install| install.path() == self.sys_base_prefix)
     }
 
     /// Returns `Some` if the environment is externally managed, optionally including an error
