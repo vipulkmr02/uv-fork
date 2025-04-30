@@ -185,11 +185,14 @@ impl Interpreter {
                                 self.python_major(),
                                 self.python_minor(),
                             ))
-                            .join(format!(
-                                "python{}.{}",
-                                self.python_major(),
-                                self.python_minor()
-                            ));
+                            // FIXME Is this what we want?
+                            .join("python.exe");
+                            // FIXME !@
+                            // .join(format!(
+                            //     "python{}.{}",
+                            //     self.python_major(),
+                            //     self.python_minor()
+                            // ));
                         debug!(
                             "Using directory symlink instead of base Python: {}",
                             &path_link.display()
@@ -660,6 +663,20 @@ impl Interpreter {
             .executable_names(None)
             .into_iter()
             .any(|default_name| name == default_name.to_string())
+    }
+
+    // FIXME !@
+    /// FIXME Doc
+    pub fn minor_symlink_path_executable(&self) -> Result<PathBuf, io::Error> {
+        // dbg!("sys_executable: {:?}", &self.sys_executable);
+        if self.is_virtualenv() {
+            // dbg!("is_virtualenv");
+            Ok(self.sys_executable.clone())
+        } else {
+            let symlink_path = self.symlink_path_from_base_python(self.sys_executable.clone());
+            // dbg!("symlink_path: {:?}", &symlink_path);
+            symlink_path
+        }
     }
 }
 

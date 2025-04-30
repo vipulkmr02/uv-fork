@@ -1219,7 +1219,9 @@ impl RunCommand {
     fn as_command(&self, interpreter: &Interpreter) -> Command {
         match self {
             Self::Python(args) => {
-                let mut process = Command::new(interpreter.sys_executable());
+                let mut process = Command::new(interpreter.minor_symlink_path_executable().expect("FIXME !@"));
+                // FIXME Remove
+                // let mut process = Command::new(interpreter.sys_executable());
                 process.args(args);
                 process
             }
