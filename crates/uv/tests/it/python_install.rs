@@ -1438,12 +1438,11 @@ fn install_transparent_patch_upgrade_uv_venv() {
 }
 
 #[test]
-fn install_no_transparent_with_patch_uv_venv() {
+fn install_transparent_upgrade_despite_venv_patch_specification() {
     let context = TestContext::new_with_versions(&["3.13"])
         .with_filtered_python_keys()
         .with_filtered_exe_suffix()
         .with_managed_python_dirs()
-        .with_filtered_python_names()
         .with_filtered_python_install_bin();
 
     uv_snapshot!(context.filters(), context.python_install().arg("3.12.9"), @r"
@@ -1465,6 +1464,7 @@ fn install_no_transparent_with_patch_uv_venv() {
     ----- stdout -----
 
     ----- stderr -----
+    warning: Virtual environments only record Python minor versions. You could use `uv python pin python3.12.9` to pin the full version
     Using CPython 3.12.9
     Creating virtual environment at: .venv
     Activate with: source .venv/[BIN]/activate
@@ -1492,11 +1492,12 @@ fn install_no_transparent_with_patch_uv_venv() {
     "
     );
 
+    // The virtual environment Python version is transparently upgraded.
     uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
     success: true
     exit_code: 0
     ----- stdout -----
-    Python 3.12.9
+    Python 3.12.10
 
     ----- stderr -----
     "

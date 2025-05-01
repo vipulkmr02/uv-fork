@@ -123,7 +123,7 @@ fn python_upgrade_ignored_with_python_pin() {
     ");
 
     // Create a virtual environment
-    uv_snapshot!(context.filters(), context.venv().arg("-p").arg("3.10.8"), @r"
+    uv_snapshot!(context.filters(), context.venv(), @r"
     success: true
     exit_code: 0
     ----- stdout -----
@@ -168,7 +168,7 @@ fn python_upgrade_ignored_with_python_pin() {
 }
 
 #[test]
-fn python_upgrade_ignored_with_venv_patch_specification() {
+fn python_transparent_upgrade_despite_venv_patch_specification() {
     let context: TestContext = TestContext::new_with_versions(&["3.13"])
         .with_filtered_python_keys()
         .with_filtered_exe_suffix()
@@ -192,10 +192,21 @@ fn python_upgrade_ignored_with_venv_patch_specification() {
     ----- stdout -----
 
     ----- stderr -----
+    warning: Virtual environments only record Python minor versions. You could use `uv python pin python3.10.8` to pin the full version
     Using CPython 3.10.8
     Creating virtual environment at: .venv
     Activate with: source .venv/[BIN]/activate
     ");
+
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.10.8
+
+    ----- stderr -----
+    "
+    );
 
     // Upgrade patch version
     uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r"
@@ -208,12 +219,12 @@ fn python_upgrade_ignored_with_venv_patch_specification() {
      + cpython-3.10.17-[PLATFORM]
     ");
 
-    // Should respect patch version venv was created with
+    // The virtual environment Python version is transparently upgraded.
     uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
     success: true
     exit_code: 0
     ----- stdout -----
-    Python 3.10.8
+    Python 3.10.17
 
     ----- stderr -----
     "

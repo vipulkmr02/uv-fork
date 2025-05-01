@@ -602,6 +602,7 @@ hint: If you are running a script with `{}` in the shebang, you may need to incl
                 )
                 .await?;
 
+                // dbg!("python_request: {:?}", &python_request);
                 if let Some(PythonRequest::Version(version)) = &python_request {
                     is_patch_request = matches!(version, &VersionRequest::MajorMinorPatch(..));
                 }
@@ -838,7 +839,7 @@ hint: If you are running a script with `{}` in the shebang, you may need to incl
                     .await?
                     .and_then(PythonVersionFile::into_version)
                 };
-
+                // dbg!("python_request: {:?}", &python_request);
                 if let Some(PythonRequest::Version(version)) = &python_request {
                     is_patch_request = matches!(version, &VersionRequest::MajorMinorPatch(..));
                 }
@@ -1235,7 +1236,11 @@ impl RunCommand {
                     Command::new(interpreter.sys_executable())
                 } else {
                     // FIXME !@
-                    Command::new(interpreter.minor_symlink_path_executable().expect("FIXME !@"))
+                    Command::new(
+                        interpreter
+                            .minor_symlink_path_executable()
+                            .expect("FIXME !@"),
+                    )
                 };
                 process.args(args);
                 process

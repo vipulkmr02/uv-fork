@@ -187,12 +187,12 @@ impl Interpreter {
                             ))
                             // FIXME Is this what we want?
                             .join("python.exe");
-                            // FIXME !@
-                            // .join(format!(
-                            //     "python{}.{}",
-                            //     self.python_major(),
-                            //     self.python_minor()
-                            // ));
+                        // FIXME !@
+                        // .join(format!(
+                        //     "python{}.{}",
+                        //     self.python_major(),
+                        //     self.python_minor()
+                        // ));
                         debug!(
                             "Using directory symlink instead of base Python: {}",
                             &path_link.display()
@@ -673,9 +673,7 @@ impl Interpreter {
             // dbg!("is_virtualenv");
             Ok(self.sys_executable.clone())
         } else {
-            let symlink_path = self.symlink_path_from_base_python(self.sys_executable.clone());
-            // dbg!("symlink_path: {:?}", &symlink_path);
-            symlink_path
+            self.symlink_path_from_base_python(self.sys_executable.clone())
         }
     }
 }
