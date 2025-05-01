@@ -270,7 +270,7 @@ pub(crate) async fn install(
         (vec![], unsatisfied)
     } else if upgrade && requests.is_empty() {
         let mut minor_versions = FxHashSet::default();
-        for installation in existing_installations {
+        for installation in &existing_installations {
             minor_versions.insert(installation.version().python_version());
         }
         for version in minor_versions {
