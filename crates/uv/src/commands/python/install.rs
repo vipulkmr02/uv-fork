@@ -209,7 +209,7 @@ pub(crate) async fn install(
 
     // Find requests that are already satisfied
     let mut changelog = Changelog::default();
-    let (satisfied, unsatisfied): (Vec<_>, Vec<_>) = if reinstall {
+    let (satisfied, unsatisfied): (Vec<_>, Vec<_>) = if reinstall || upgrade {
         // In the reinstall case, we want to iterate over all matching installations instead of
         // stopping at the first match.
 
