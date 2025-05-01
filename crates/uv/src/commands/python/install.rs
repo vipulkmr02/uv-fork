@@ -86,6 +86,7 @@ impl InstallRequest {
         &self,
         installation: &ManagedPythonInstallation,
     ) -> bool {
+        dbg!("download key: {:?}, installation key: {:?}", self.download.key(), installation.key());
         self.download.key() == installation.key()
     }
 }
@@ -209,7 +210,7 @@ pub(crate) async fn install(
 
     // Find requests that are already satisfied
     let mut changelog = Changelog::default();
-    let (satisfied, unsatisfied): (Vec<_>, Vec<_>) = if reinstall || upgrade {
+    let (satisfied, unsatisfied): (Vec<_>, Vec<_>) = if reinstall {
         // In the reinstall case, we want to iterate over all matching installations instead of
         // stopping at the first match.
 
@@ -220,12 +221,7 @@ pub(crate) async fn install(
             let mut matching_installations = existing_installations
                 .iter()
                 .filter(|installation| {
-                    if upgrade {
-                        // FIXME improve
-                        request.managed_download_matches_installation(installation)
-                    } else {
-                        request.matches_installation(installation)
-                    }
+                    request.matches_installation(installation)
                 })
                 .peekable();
 
@@ -272,6 +268,75 @@ pub(crate) async fn install(
             }
         }
         (vec![], unsatisfied)
+    } else if upgrade && requests.is_empty() {
+        let mut minor_versions = FxHashSet::new();
+        for installation in existing_installations {
+            minor_versions.insert(installation.version().python_version());
+        }
+        for version in minor_versions {
+
+        }
+
+
+        dbg!("requests count: {:?}", requests.len());
+
+        // FIXME
+        // let mut unsatisfied: Vec<Cow<InstallRequest>> =
+        //     Vec::with_capacity(existing_installations.len() + requests.len());
+
+        // for request in &requests {
+        //     let mut matching_installations = existing_installations
+        //         .iter()
+        //         .filter(|installation| {
+        //             // FIXME: Improve
+        //             request.managed_download_matches_installation(installation)
+        //         })
+        //         .peekable();
+
+        //     if matching_installations.peek().is_none() {
+        //         debug!("No installation found for request `{}`", request.cyan());
+        //         writeln!(
+        //             printer.stderr(),
+        //             "Cannot upgrade as there is no Python version installed. Use `uv python install <request>` to install another version.",
+        //         )?;
+        //         // FIXME
+        //         // unsatisfied.push(Cow::Borrowed(request));
+        //     }
+
+        //     for installation in matching_installations {
+        //         changelog.existing.insert(installation.key().clone());
+        //         if matches!(&request.request, &PythonRequest::Any) {
+        //             // Construct an install request matching the existing installation
+        //             match InstallRequest::new(
+        //                 PythonRequest::Key(installation.into()),
+        //                 python_downloads_json_url.as_deref(),
+        //             ) {
+        //                 Ok(request) => {
+        //                     debug!("Will reinstall `{}`", installation.key().green());
+        //                     unsatisfied.push(Cow::Owned(request));
+        //                 }
+        //                 Err(err) => {
+        //                     // This shouldn't really happen, but maybe a new version of uv dropped
+        //                     // support for a key we previously supported
+        //                     warn_user!(
+        //                         "Failed to create reinstall request for existing installation `{}`: {err}",
+        //                         installation.key().green()
+        //                     );
+        //                 }
+        //             }
+        //         } else {
+        //             // If we have real requests, just ignore the existing installation
+        //             debug!(
+        //                 "Ignoring match `{}` for request `{}` due to `--reinstall` flag",
+        //                 installation.key().green(),
+        //                 request.cyan()
+        //             );
+        //             unsatisfied.push(Cow::Borrowed(request));
+        //             break;
+        //         }
+        //     }
+        // }
+        // (vec![], unsatisfied)
     } else {
         // If we can find one existing installation that matches the request, it is satisfied
         requests.iter().partition_map(|request| {

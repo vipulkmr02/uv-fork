@@ -43,6 +43,60 @@ fn python_upgrade() {
 }
 
 #[test]
+fn python_upgrade_without_version() {
+    let context: TestContext = TestContext::new_with_versions(&[])
+        .with_filtered_python_keys()
+        .with_filtered_exe_suffix()
+        .with_managed_python_dirs()
+        .with_filtered_python_names();
+
+    // FIXME: Last line of message is incorrect
+    // Should be a no-op when no versions have been installed
+    uv_snapshot!(context.filters(), context.python_upgrade(), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Cannot upgrade as there is no Python version installed. Use `uv python install <request>` to install another version.
+    Python versions are already at the latest patch. Use `uv python install <request>` to install another version.
+    ");
+
+    // Install an earlier patch version
+    uv_snapshot!(context.filters(), context.python_install().arg("3.10.8").arg("3.11.8").arg("3.12.8"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed 3 versions in [TIME]
+     + cpython-3.10.8-[PLATFORM]
+     + cpython-3.11.8-[PLATFORM]
+     + cpython-3.12.8-[PLATFORM]
+    ");
+
+    // Upgrade patch versions
+    uv_snapshot!(context.filters(), context.python_upgrade(), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.10.17 in [TIME]
+     + cpython-3.10.17-[PLATFORM]
+    ");
+
+    // Should be a no-op when already upgraded
+    uv_snapshot!(context.filters(), context.python_upgrade(), @r###"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    "###);
+}
+
+#[test]
 fn python_upgrade_preview() {
     let context: TestContext = TestContext::new_with_versions(&[])
         .with_filtered_python_keys()
