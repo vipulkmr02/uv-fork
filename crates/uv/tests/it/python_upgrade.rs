@@ -43,6 +43,45 @@ fn python_upgrade() {
 }
 
 #[test]
+fn python_upgrade_preview() {
+    let context: TestContext = TestContext::new_with_versions(&[])
+        .with_filtered_python_keys()
+        .with_filtered_exe_suffix()
+        .with_managed_python_dirs();
+
+    // Install an earlier patch version
+    uv_snapshot!(context.filters(), context.python_install().arg("3.10.8").arg("--preview"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.10.8 in [TIME]
+     + cpython-3.10.8-[PLATFORM] (python3.10)
+    ");
+
+    // Upgrade patch version
+    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.10.17 in [TIME]
+     + cpython-3.10.17-[PLATFORM]
+    ");
+
+    // Should be a no-op when already upgraded
+    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r###"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    "###);
+}
+
+#[test]
 fn python_upgrade_transparent_from_venv() {
     let context: TestContext = TestContext::new_with_versions(&["3.13"])
         .with_filtered_python_keys()
@@ -58,6 +97,118 @@ fn python_upgrade_transparent_from_venv() {
     ----- stderr -----
     Installed Python 3.10.8 in [TIME]
      + cpython-3.10.8-[PLATFORM]
+    ");
+
+    // Create a virtual environment
+    uv_snapshot!(context.filters(), context.venv().arg("-p").arg("3.10"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Using CPython 3.10.8
+    Creating virtual environment at: .venv
+    Activate with: source .venv/[BIN]/activate
+    ");
+
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.10.8
+
+    ----- stderr -----
+    "
+    );
+
+    // Upgrade patch version
+    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.10.17 in [TIME]
+     + cpython-3.10.17-[PLATFORM]
+    ");
+
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.10.17
+
+    ----- stderr -----
+    "
+    );
+}
+
+#[test]
+fn python_upgrade_with_preview_installation() {
+    let context: TestContext = TestContext::new_with_versions(&["3.13"])
+        .with_filtered_python_keys()
+        .with_filtered_exe_suffix()
+        .with_managed_python_dirs();
+
+    // Install an earlier patch version
+    uv_snapshot!(context.filters(), context.python_install().arg("3.10.8").arg("--preview"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.10.8 in [TIME]
+     + cpython-3.10.8-[PLATFORM] (python3.10)
+    ");
+
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.10.8
+
+    ----- stderr -----
+    "
+    );
+
+    // Upgrade patch version
+    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.10.17 in [TIME]
+     + cpython-3.10.17-[PLATFORM]
+    ");
+
+    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.10.17
+
+    ----- stderr -----
+    "
+    );
+}
+
+#[test]
+fn python_upgrade_transparent_from_venv_preview() {
+    let context: TestContext = TestContext::new_with_versions(&["3.13"])
+        .with_filtered_python_keys()
+        .with_filtered_exe_suffix()
+        .with_managed_python_dirs();
+
+    // Install an earlier patch version
+    uv_snapshot!(context.filters(), context.python_install().arg("3.10.8").arg("--preview"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.10.8 in [TIME]
+     + cpython-3.10.8-[PLATFORM] (python3.10)
     ");
 
     // Create a virtual environment

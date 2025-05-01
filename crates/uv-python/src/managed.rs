@@ -667,7 +667,7 @@ impl ManagedPythonInstallation {
 /// Create a link to the managed Python executable.
 ///
 /// If the file already exists at the target path, an error will be returned.
-// FIXME: The target needs to be the symlink path
+// FIXME: The executable needs to be the symlink path
 pub fn create_bin_link(target: &Path, executable: PathBuf) -> Result<(), Error> {
     let bin = target.parent().ok_or(Error::NoExecutableDirectory)?;
     fs_err::create_dir_all(bin).map_err(|err| Error::ExecutableDirectory {

@@ -175,7 +175,7 @@ pub(crate) async fn install(
         .unwrap_or_else(|| {
             // If no version file is found and no requests were made
             is_default_install = true;
-            vec![if reinstall {
+            vec![if reinstall || upgrade {
                 // On bare `--reinstall`, reinstall all Python versions
                 PythonRequest::Any
             } else {
@@ -219,7 +219,14 @@ pub(crate) async fn install(
         for request in &requests {
             let mut matching_installations = existing_installations
                 .iter()
-                .filter(|installation| request.matches_installation(installation))
+                .filter(|installation| {
+                    if upgrade {
+                        // FIXME improve
+                        request.managed_download_matches_installation(installation)
+                    } else {
+                        request.matches_installation(installation)
+                    }
+                })
                 .peekable();
 
             if matching_installations.peek().is_none() {
@@ -422,10 +429,17 @@ pub(crate) async fn install(
 
     if changelog.installed.is_empty() && errors.is_empty() {
         if is_default_install {
-            writeln!(
-                printer.stderr(),
-                "Python is already installed. Use `uv python install <request>` to install another version.",
-            )?;
+            if upgrade {
+                writeln!(
+                    printer.stderr(),
+                    "Python versions are already at the latest patch. Use `uv python install <request>` to install another version.",
+                )?;
+            } else {
+                writeln!(
+                    printer.stderr(),
+                    "Python is already installed. Use `uv python install <request>` to install another version.",
+                )?;
+            }
         } else if requests.len() > 1 {
             writeln!(printer.stderr(), "All requested versions already installed")?;
         }
