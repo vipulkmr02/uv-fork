@@ -981,6 +981,7 @@ pub(crate) struct PythonUpgradeSettings {
     pub(crate) force: bool,
     pub(crate) python_install_mirror: Option<String>,
     pub(crate) pypy_install_mirror: Option<String>,
+    pub(crate) python_downloads_json_url: Option<String>,
     pub(crate) default: bool,
 }
 
@@ -989,15 +990,18 @@ impl PythonUpgradeSettings {
     #[allow(clippy::needless_pass_by_value)]
     pub(crate) fn resolve(args: PythonUpgradeArgs, filesystem: Option<FilesystemOptions>) -> Self {
         let options = filesystem.map(FilesystemOptions::into_options);
-        let (python_mirror, pypy_mirror) = match options {
+        let (python_mirror, pypy_mirror, python_downloads_json_url) = match options {
             Some(options) => (
                 options.install_mirrors.python_install_mirror,
                 options.install_mirrors.pypy_install_mirror,
+                options.install_mirrors.python_downloads_json_url,
             ),
-            None => (None, None),
+            None => (None, None, None),
         };
         let python_mirror = args.mirror.or(python_mirror);
         let pypy_mirror = args.pypy_mirror.or(pypy_mirror);
+        let python_downloads_json_url =
+            args.python_downloads_json_url.or(python_downloads_json_url);
 
         let PythonUpgradeArgs {
             install_dir,
@@ -1005,6 +1009,7 @@ impl PythonUpgradeSettings {
             force,
             mirror: _,
             pypy_mirror: _,
+            python_downloads_json_url: _,
             default,
         } = args;
 
@@ -1014,6 +1019,7 @@ impl PythonUpgradeSettings {
             force,
             python_install_mirror: python_mirror,
             pypy_install_mirror: pypy_mirror,
+            python_downloads_json_url,
             default,
         }
     }
