@@ -4610,7 +4610,7 @@ uv python [OPTIONS] <COMMAND>
 </dd>
 <dt><a href="#uv-python-install"><code>uv python install</code></a></dt><dd><p>Download and install Python versions</p>
 </dd>
-<dt><a href="#uv-python-upgrade"><code>uv python upgrade</code></a></dt><dd><p>FIXME: Document</p>
+<dt><a href="#uv-python-upgrade"><code>uv python upgrade</code></a></dt><dd><p>Upgrade Python to the latest patch version</p>
 </dd>
 <dt><a href="#uv-python-find"><code>uv python find</code></a></dt><dd><p>Search for a Python installation</p>
 </dd>
@@ -4969,6 +4969,8 @@ uv python install [OPTIONS] [TARGETS]...
 
 ### uv python upgrade
 
+Upgrade Python to the latest patch version.
+
 FIXME: Document
 
 <h3 class="cli-reference">Usage</h3>
@@ -5114,6 +5116,11 @@ uv python upgrade [OPTIONS] [TARGETS]...
 <p>Distributions can be read from a local directory by using the <code>file://</code> URL scheme.</p>
 
 <p>May also be set with the <code>UV_PYPY_INSTALL_MIRROR</code> environment variable.</p>
+</dd><dt id="uv-python-upgrade--python-downloads-json-url"><a href="#uv-python-upgrade--python-downloads-json-url"><code>--python-downloads-json-url</code></a> <i>python-downloads-json-url</i></dt><dd><p>URL pointing to JSON of custom Python installations.</p>
+
+<p>Note that currently, only local paths are supported.</p>
+
+<p>May also be set with the <code>UV_PYTHON_DOWNLOADS_JSON_URL</code> environment variable.</p>
 </dd><dt id="uv-python-upgrade--quiet"><a href="#uv-python-upgrade--quiet"><code>--quiet</code></a>, <code>-q</code></dt><dd><p>Use quiet output.</p>
 
 <p>Repeating this option, e.g., <code>-qq</code>, will enable a silent mode in which uv will write no output to stdout.</p>
@@ -5121,8 +5128,6 @@ uv python upgrade [OPTIONS] [TARGETS]...
 </dd><dt id="uv-python-upgrade--verbose"><a href="#uv-python-upgrade--verbose"><code>--verbose</code></a>, <code>-v</code></dt><dd><p>Use verbose output.</p>
 
 <p>You can configure fine-grained logging using the <code>RUST_LOG</code> environment variable. (&lt;https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#directives&gt;)</p>
-
-</dd><dt id="uv-python-upgrade--version"><a href="#uv-python-upgrade--version"><code>--version</code></a>, <code>-V</code></dt><dd><p>Display the uv version</p>
 
 </dd></dl>
 
