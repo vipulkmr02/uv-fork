@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use crate::common::{uv_snapshot, TestContext};
 use assert_fs::prelude::PathChild;
 
@@ -207,8 +209,10 @@ fn python_upgrade_transparent_from_venv() {
     );
 }
 
+// TODO(john): Add upgrade support for preview bin Python. After upgrade,
+// the bin Python version should be the latest patch.
 #[test]
-fn python_upgrade_with_preview_installation() {
+fn python_transparent_upgrade_with_preview_installation() {
     let context: TestContext = TestContext::new_with_versions(&["3.13"])
         .with_filtered_python_keys()
         .with_filtered_exe_suffix()
@@ -225,7 +229,12 @@ fn python_upgrade_with_preview_installation() {
      + cpython-3.10.8-[PLATFORM] (python3.10)
     ");
 
-    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    let bin_python = context
+        .bin_dir
+        .child(format!("python3.10{}", std::env::consts::EXE_SUFFIX));
+
+    uv_snapshot!(context.filters(), Command::new(bin_python.as_os_str())
+        .arg("--version"), @r"
     success: true
     exit_code: 0
     ----- stdout -----
@@ -246,11 +255,14 @@ fn python_upgrade_with_preview_installation() {
      + cpython-3.10.17-[PLATFORM]
     ");
 
-    uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
+    // TODO(john): Upgrades are not currently reflected for --preview bin Python,
+    // so we see the outdated patch version.
+    uv_snapshot!(context.filters(), Command::new(bin_python.as_os_str())
+        .arg("--version"), @r"
     success: true
     exit_code: 0
     ----- stdout -----
-    Python 3.10.17
+    Python 3.10.8
 
     ----- stderr -----
     "
@@ -442,6 +454,102 @@ fn python_transparent_upgrade_despite_venv_patch_specification() {
     Python 3.10.17
 
     ----- stderr -----
+    "
+    );
+}
+
+#[test]
+fn python_transparent_upgrade_venv_venv() {
+    let context: TestContext = TestContext::new_with_versions(&[])
+        .with_filtered_python_keys()
+        .with_filtered_exe_suffix()
+        .with_managed_python_dirs();
+
+    // Install an earlier patch version
+    uv_snapshot!(context.filters(), context.python_install().arg("3.10.8"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.10.8 in [TIME]
+     + cpython-3.10.8-[PLATFORM]
+    ");
+
+    uv_snapshot!(context.filters(), context.venv().arg("-p").arg("3.10"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Using CPython 3.10.8
+    Creating virtual environment at: .venv
+    Activate with: source .venv/[BIN]/activate
+    ");
+
+    // Init a new project from within a virtual environment
+    uv_snapshot!(context.filters(), context.init().arg("proj"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Initialized project `proj` at `[TEMP_DIR]/proj`
+    ");
+
+    // Create a new virtual environment from within a virtual environment
+    uv_snapshot!(context.filters(), context.venv()
+        .arg("--directory").arg("proj"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Using CPython 3.10.8
+    Creating virtual environment at: .venv
+    Activate with: source .venv/[BIN]/activate
+    ");
+
+    uv_snapshot!(context.filters(), context.run()
+        .env(EnvVars::VIRTUAL_ENV, ".venv")
+        .arg("--directory").arg("proj")
+        .arg("python").arg("--version"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.10.8
+
+    ----- stderr -----
+    Resolved 1 package in [TIME]
+    Audited in [TIME]
+    "
+    );
+
+    // Upgrade patch version
+    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Installed Python 3.10.17 in [TIME]
+     + cpython-3.10.17-[PLATFORM]
+    ");
+
+    // Should have transparently upgraded in second-order virtual environment
+    uv_snapshot!(context.filters(), context.run()
+        .env(EnvVars::VIRTUAL_ENV, ".venv")
+        .arg("--directory").arg("proj")
+        .arg("python").arg("--version")
+        .env_remove(EnvVars::VIRTUAL_ENV), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+    Python 3.10.17
+
+    ----- stderr -----
+    Resolved 1 package in [TIME]
+    Audited in [TIME]
     "
     );
 }
