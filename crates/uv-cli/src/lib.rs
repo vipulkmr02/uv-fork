@@ -3488,7 +3488,7 @@ pub struct AddArgs {
     )]
     pub raw_sources: bool,
 
-    /// The kind of version specifier for newly added dependencies.
+    /// The kind of version specifier to use when adding dependencies.
     ///
     /// If no constraint or URL is provided for a dependency, a bound is added based on the
     /// latest compatible version of the package, e.g., `>=1.2.3`, unless `--frozen` is provided, in
