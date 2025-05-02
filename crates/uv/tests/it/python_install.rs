@@ -1372,6 +1372,7 @@ fn python_install_cached() {
     ");
 }
 
+// A virtual environment should track the latest patch version installed.
 #[test]
 fn install_transparent_patch_upgrade_uv_venv() {
     let context = TestContext::new_with_versions(&["3.13"])
@@ -1437,6 +1438,9 @@ fn install_transparent_patch_upgrade_uv_venv() {
     );
 }
 
+// Virtual environments only record minor versions. `uv venv -p 3.x.y` will
+// not prevent a virtual environment from tracking the latest patch version
+// installed.
 #[test]
 fn install_transparent_upgrade_despite_venv_patch_specification() {
     let context = TestContext::new_with_versions(&["3.13"])
@@ -1504,6 +1508,8 @@ fn install_transparent_upgrade_despite_venv_patch_specification() {
     );
 }
 
+// A virtual environment created using the `venv` module should track
+// the latest patch version installed.
 #[test]
 fn install_transparent_patch_upgrade_venv_module() {
     let context = TestContext::new_with_versions(&[])

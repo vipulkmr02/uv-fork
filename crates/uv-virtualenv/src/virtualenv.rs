@@ -144,15 +144,15 @@ pub(crate) fn create(
     // Create a `.gitignore` file to ignore all files in the venv.
     fs::write(location.join(".gitignore"), "*")?;
 
-    // Per PEP 405, the Python `home` is the parent directory of the interpreter.
-    // FIXME: Doc
-    // FIXME: This uses Zanie's is_managed
     let executable_target = if interpreter.is_managed() {
         interpreter.symlink_path_from_base_python(base_python.clone())?
     } else {
         base_python.clone()
     };
 
+    // Per PEP 405, the Python `home` is the parent directory of the interpreter.
+    // For managed interpreters, this `home` value will include a symlink directory
+    // on Unix or junction on Windows to enable transparent Python patch upgrades.
     let python_home = executable_target
         .parent()
         .ok_or_else(|| {
@@ -170,7 +170,6 @@ pub(crate) fn create(
 
     #[cfg(unix)]
     {
-        // FIXME: Doc
         uv_fs::replace_symlink(&executable_target, &executable)?;
         uv_fs::replace_symlink(
             "python",
@@ -198,15 +197,15 @@ pub(crate) fn create(
         }
     }
 
-    // FIXME: Replace comment
-    // No symlinking on Windows, at least not on a regular non-dev non-admin Windows install.
+    // On Windows, we use trampolines that point to our junction-containing executable link.
+    // TODO(john): I think we can do this directly with junctions.
     if cfg!(windows) {
         create_venv_trampoline_windows(
             &executable_target,
             &[WindowsExecutable::Python],
             interpreter,
             &scripts,
-        );
+        )?;
 
         if interpreter.markers().implementation_name() == "graalpy" {
             create_venv_trampoline_windows(
@@ -218,7 +217,7 @@ pub(crate) fn create(
                 ],
                 interpreter,
                 &scripts,
-            );
+            )?;
         }
 
         if interpreter.markers().implementation_name() == "pypy" {
@@ -235,7 +234,7 @@ pub(crate) fn create(
                 ],
                 interpreter,
                 &scripts,
-            );
+            )?;
         }
     }
 
@@ -442,15 +441,15 @@ impl WindowsExecutable {
     }
 }
 
-// FIXME Create new error?
 fn create_venv_trampoline_windows(
     executable: &Path,
     executable_kinds: &[WindowsExecutable],
     interpreter: &Interpreter,
     scripts: &Path,
-) {
+) -> Result<(), Error> {
     for kind in executable_kinds {
         let target = scripts.join(kind.exe(interpreter));
-        create_bin_link(target.as_path(), PathBuf::from(executable)).expect("FIXME");
+        create_bin_link(target.as_path(), PathBuf::from(executable)).map_err(Error::Python)?;
     }
+    Ok(())
 }

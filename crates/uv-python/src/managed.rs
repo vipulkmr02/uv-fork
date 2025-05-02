@@ -508,29 +508,27 @@ impl ManagedPythonInstallation {
     pub fn ensure_minor_version_link(&self) -> Result<(), Error> {
         let python = self.executable(false);
         let version_name = format!("python{}.{}", self.key.major, self.key.minor);
-        let link_dir = self.path().with_file_name(format!("{}-dir", &version_name));
+        let executable = self.path().with_file_name(&version_name);
 
-        match replace_symlink(self.path(), &link_dir) {
+        match replace_symlink(self.path(), &executable) {
             Ok(()) => {
-                // FIXME: Update
                 debug!(
                     "Created link {} -> {}",
-                    link_dir.user_display(),
+                    executable.user_display(),
                     python.user_display(),
                 );
             }
-            // FIXME: Update these errors!
-            _ => {} // Err(err) if err.kind() == io::ErrorKind::NotFound => {
-                    //     return Err(Error::MissingExecutable(python.clone()))
-                    // }
-                    // Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
-                    // Err(err) => {
-                    //     return Err(Error::CanonicalizeExecutable {
-                    //         from: executable,
-                    //         to: python,
-                    //         err,
-                    //     })
-                    // }
+            Err(err) if err.kind() == io::ErrorKind::NotFound => {
+                return Err(Error::MissingExecutable(python.clone()))
+            }
+            Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(err) => {
+                return Err(Error::LinkExecutable {
+                    from: executable,
+                    to: python,
+                    err,
+                })
+            }
         }
 
         Ok(())

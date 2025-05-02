@@ -139,59 +139,41 @@ impl Interpreter {
         Ok(base_python)
     }
 
-    // FIXME: Doc
+    /// Derive a path from base Python that substitutes a symlink directory
+    /// (or junction on Windows) for the patch version directory.
     pub fn symlink_path_from_base_python(
         &self,
         base_python: PathBuf,
     ) -> Result<PathBuf, io::Error> {
+        let version = format!("python{}.{}", self.python_major(), self.python_minor());
         if let Some(parent) = base_python.parent() {
             #[cfg(unix)]
+            if parent
+                .components()
+                .next_back()
+                .is_some_and(|c| c.as_os_str() == "bin")
             {
-                if parent
-                    .components()
-                    .next_back()
-                    .is_some_and(|c| c.as_os_str() == "bin")
-                {
-                    if let Some(path) = parent.parent().and_then(Path::parent) {
-                        let path_link = path
-                            .to_path_buf()
-                            .join(format!(
-                                "python{}.{}-dir",
-                                self.python_major(),
-                                self.python_minor(),
-                            ))
-                            .join("bin")
-                            .join(format!(
-                                "python{}.{}",
-                                self.python_major(),
-                                self.python_minor()
-                            ));
-                        debug!(
-                            "Using directory symlink instead of base Python: {}",
-                            &path_link.display()
-                        );
-                        return Ok(path_link);
-                    }
+                if let Some(path) = parent.parent().and_then(Path::parent) {
+                    let path_link = path.to_path_buf().join(&version).join("bin").join(&version);
+
+                    debug!(
+                        "Using directory symlink instead of base Python: {}",
+                        &path_link.display()
+                    );
+                    return Ok(path_link);
                 }
             }
             #[cfg(windows)]
-            {
-                if parent.components().next_back().is_some() {
-                    if let Some(path) = parent.parent() {
-                        let path_link = path
-                            .to_path_buf()
-                            .join(format!(
-                                "python{}.{}-dir",
-                                self.python_major(),
-                                self.python_minor(),
-                            ))
-                            .join("python.exe");
-                        debug!(
-                            "Using directory symlink instead of base Python: {}",
-                            &path_link.display()
-                        );
-                        return Ok(path_link);
-                    }
+            if parent.components().next_back().is_some() {
+                if let Some(path) = parent.parent() {
+                    let version = format!("python{}.{}", self.python_major(), self.python_minor());
+                    let path_link = path.to_path_buf().join(&version).join("python.exe");
+
+                    debug!(
+                        "Using directory symlink instead of base Python: {}",
+                        &path_link.display()
+                    );
+                    return Ok(path_link);
                 }
             }
         }
