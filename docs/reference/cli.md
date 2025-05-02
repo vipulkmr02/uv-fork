@@ -774,9 +774,11 @@ uv add [OPTIONS] <PACKAGES|--requirements <REQUIREMENTS>>
 <p>WARNING: Hosts included in this list will not be verified against the system&#8217;s certificate store. Only use <code>--allow-insecure-host</code> in a secure network with verified sources, as it bypasses SSL verification and could expose you to MITM attacks.</p>
 
 <p>May also be set with the <code>UV_INSECURE_HOST</code> environment variable.</p>
-</dd><dt id="uv-add--bounds"><a href="#uv-add--bounds"><code>--bounds</code></a> <i>bounds</i></dt><dd><p>The kind of version specifier for newly added dependencies.</p>
+</dd><dt id="uv-add--bounds"><a href="#uv-add--bounds"><code>--bounds</code></a> <i>bounds</i></dt><dd><p>The kind of version specifier to use when adding dependencies.</p>
 
-<p>If no constraint or URL is provided for a dependency, a bound is added based on the latest compatible version of the package, e.g., <code>&gt;=1.2.3</code>, unless <code>--frozen</code> is provided, in which case no resolution is performed.</p>
+<p>When adding a dependency to the project, if no constraint or URL is provided, a constraint is added based on the latest compatible version of the package. By default, a lower bound constraint is used, e.g., <code>&gt;=1.2.3</code>.</p>
+
+<p>When <code>--frozen</code> is provided, no resolution is performed, and dependencies are always added without constraints.</p>
 
 <p>Possible values:</p>
 

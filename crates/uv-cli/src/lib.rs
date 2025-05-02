@@ -3490,9 +3490,12 @@ pub struct AddArgs {
 
     /// The kind of version specifier to use when adding dependencies.
     ///
-    /// If no constraint or URL is provided for a dependency, a bound is added based on the
-    /// latest compatible version of the package, e.g., `>=1.2.3`, unless `--frozen` is provided, in
-    /// which case no resolution is performed.
+    /// When adding a dependency to the project, if no constraint or URL is provided, a constraint
+    /// is added based on the latest compatible version of the package. By default, a lower bound
+    /// constraint is used, e.g., `>=1.2.3`.
+    ///
+    /// When `--frozen` is provided, no resolution is performed, and dependencies are always added
+    /// without constraints.
     #[arg(long, value_enum)]
     pub bounds: Option<AddBoundsKind>,
 
