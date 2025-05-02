@@ -305,7 +305,6 @@ impl Interpreter {
         self.prefix.is_some()
     }
 
-    // FIXME: This is from Zanie's PR https://github.com/astral-sh/uv/pull/7934/files#diff-40b5f94e00ec244afb2a88a5f7c63b9e6134dc0fc813526540a14ffff7fabd7bR267-R281
     /// Returns `true` if this interpreter is managed by uv.
     ///
     /// Returns `false` if we cannot determine the path of the uv managed Python interpreters.

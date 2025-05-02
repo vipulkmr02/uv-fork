@@ -4981,11 +4981,9 @@ uv python upgrade [OPTIONS] [TARGETS]...
 
 <h3 class="cli-reference">Arguments</h3>
 
-<dl class="cli-reference"><dt id="uv-python-upgrade--targets"><a href="#uv-python-upgrade--targets"<code>TARGETS</code></a></dt><dd><p>The Python version(s) to install.</p>
+<dl class="cli-reference"><dt id="uv-python-upgrade--targets"><a href="#uv-python-upgrade--targets"<code>TARGETS</code></a></dt><dd><p>The Python minor version(s) to upgrade.</p>
 
-<p>FIXME: What procedure will we follow for upgrade? We definitely don&#8217;t want to allow patch version provided via the command line arg If not provided, the requested Python version(s) will be read from the <code>UV_PYTHON</code> environment variable then <code>.python-versions</code> or <code>.python-version</code> files. If none of the above are present, uv will check if it has installed any Python versions. If not, it will install the latest stable version of Python.</p>
-
-<p>See <a href="#uv-python">uv python</a> to view supported request formats.</p>
+<p>If not provided, uv will attempt to upgrade every minor version that has been installed.</p>
 
 </dd></dl>
 
