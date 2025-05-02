@@ -668,9 +668,7 @@ impl Interpreter {
     // FIXME !@
     /// FIXME Doc
     pub fn minor_symlink_path_executable(&self) -> Result<PathBuf, io::Error> {
-        // dbg!("sys_executable: {:?}", &self.sys_executable);
         if self.is_virtualenv() {
-            // dbg!("is_virtualenv");
             Ok(self.sys_executable.clone())
         } else {
             self.symlink_path_from_base_python(self.sys_executable.clone())

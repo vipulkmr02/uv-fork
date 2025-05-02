@@ -21,6 +21,16 @@ fn python_upgrade() {
      + cpython-3.10.8-[PLATFORM]
     ");
 
+    // Don't accept patch version
+    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10.8"), @r"
+    success: false
+    exit_code: 1
+    ----- stdout -----
+
+    ----- stderr -----
+    error: `uv python upgrade` only accepts minor versions
+    ");
+
     // Upgrade patch version
     uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r"
     success: true
@@ -33,13 +43,13 @@ fn python_upgrade() {
     ");
 
     // Should be a no-op when already upgraded
-    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r###"
+    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r"
     success: true
     exit_code: 0
     ----- stdout -----
 
     ----- stderr -----
-    "###);
+    ");
 }
 
 #[test]
@@ -50,7 +60,6 @@ fn python_upgrade_without_version() {
         .with_managed_python_dirs()
         .with_filtered_python_names();
 
-    // FIXME: Last line of message is incorrect
     // Should be a no-op when no versions have been installed
     uv_snapshot!(context.filters(), context.python_upgrade(), @r"
     success: true
@@ -58,8 +67,6 @@ fn python_upgrade_without_version() {
     ----- stdout -----
 
     ----- stderr -----
-    Cannot upgrade as there is no Python version installed. Use `uv python install <request>` to install another version.
-    Python versions are already at the latest patch. Use `uv python install <request>` to install another version.
     ");
 
     // Install an earlier patch version
@@ -82,18 +89,21 @@ fn python_upgrade_without_version() {
     ----- stdout -----
 
     ----- stderr -----
-    Installed Python 3.10.17 in [TIME]
+    Installed 3 versions in [TIME]
      + cpython-3.10.17-[PLATFORM]
+     + cpython-3.11.12-[PLATFORM]
+     + cpython-3.12.10-[PLATFORM]
     ");
 
     // Should be a no-op when already upgraded
-    uv_snapshot!(context.filters(), context.python_upgrade(), @r###"
+    uv_snapshot!(context.filters(), context.python_upgrade(), @r"
     success: true
     exit_code: 0
     ----- stdout -----
 
     ----- stderr -----
-    "###);
+    All requested versions already on latest patch
+    ");
 }
 
 #[test]
@@ -126,13 +136,13 @@ fn python_upgrade_preview() {
     ");
 
     // Should be a no-op when already upgraded
-    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r###"
+    uv_snapshot!(context.filters(), context.python_upgrade().arg("3.10"), @r"
     success: true
     exit_code: 0
     ----- stdout -----
 
     ----- stderr -----
-    "###);
+    ");
 }
 
 #[test]

@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fmt::Write;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use anyhow::{Error, Result};
 use futures::stream::FuturesUnordered;
@@ -20,7 +21,7 @@ use uv_python::managed::{
 use uv_python::platform::{Arch, Libc};
 use uv_python::{
     PythonDownloads, PythonInstallationKey, PythonRequest, PythonVersionFile,
-    VersionFileDiscoveryOptions, VersionFilePreference,
+    VersionFileDiscoveryOptions, VersionFilePreference, VersionRequest,
 };
 use uv_shell::Shell;
 use uv_trampoline_builder::{Launcher, LauncherKind};
@@ -86,8 +87,18 @@ impl InstallRequest {
         &self,
         installation: &ManagedPythonInstallation,
     ) -> bool {
-        dbg!("download key: {:?}, installation key: {:?}", self.download.key(), installation.key());
         self.download.key() == installation.key()
+    }
+
+    fn is_version_request(&self) -> bool {
+        matches!(self.request, PythonRequest::Version(..))
+    }
+
+    fn is_minor_request(&self) -> bool {
+        matches!(
+            self.request,
+            PythonRequest::Version(VersionRequest::MajorMinor(..))
+        )
     }
 }
 
@@ -162,30 +173,59 @@ pub(crate) async fn install(
         anyhow::bail!("The `--default` flag cannot be used with multiple targets");
     }
 
+    // Read the existing installations, lock the directory for the duration
+    let installations = ManagedPythonInstallations::from_settings(install_dir)?.init()?;
+    let installations_dir = installations.root();
+    let scratch_dir = installations.scratch();
+    let _lock = installations.lock().await?;
+    let existing_installations: Vec<_> = installations
+        .find_all()?
+        .inspect(|installation| trace!("Found existing installation {}", installation.key()))
+        .collect();
+
     // Resolve the requests
     let mut is_default_install = false;
     let requests: Vec<_> = if targets.is_empty() {
-        PythonVersionFile::discover(
-            project_dir,
-            &VersionFileDiscoveryOptions::default()
-                .with_no_config(no_config)
-                .with_preference(VersionFilePreference::Versions),
-        )
-        .await?
-        .map(PythonVersionFile::into_versions)
-        .unwrap_or_else(|| {
-            // If no version file is found and no requests were made
-            is_default_install = true;
-            vec![if reinstall || upgrade {
-                // On bare `--reinstall`, reinstall all Python versions
-                PythonRequest::Any
-            } else {
-                PythonRequest::Default
-            }]
-        })
-        .into_iter()
-        .map(|a| InstallRequest::new(a, python_downloads_json_url.as_deref()))
-        .collect::<Result<Vec<_>>>()?
+        if upgrade {
+            let mut minor_version_requests = FxHashSet::default();
+            for installation in &existing_installations {
+                let request =
+                    VersionRequest::from_str(&installation.version().python_version().to_string())
+                        .expect("Minor version should be valid basis for VersionRequest");
+                minor_version_requests.insert(request);
+            }
+            minor_version_requests
+                .into_iter()
+                .map(|request| {
+                    InstallRequest::new(
+                        PythonRequest::Version(request),
+                        python_downloads_json_url.as_deref(),
+                    )
+                })
+                .collect::<Result<Vec<_>>>()?
+        } else {
+            PythonVersionFile::discover(
+                project_dir,
+                &VersionFileDiscoveryOptions::default()
+                    .with_no_config(no_config)
+                    .with_preference(VersionFilePreference::Versions),
+            )
+            .await?
+            .map(PythonVersionFile::into_versions)
+            .unwrap_or_else(|| {
+                // If no version file is found and no requests were made
+                is_default_install = true;
+                vec![if reinstall {
+                    // On bare `--reinstall`, reinstall all Python versions
+                    PythonRequest::Any
+                } else {
+                    PythonRequest::Default
+                }]
+            })
+            .into_iter()
+            .map(|a| InstallRequest::new(a, python_downloads_json_url.as_deref()))
+            .collect::<Result<Vec<_>>>()?
+        }
     } else {
         targets
             .iter()
@@ -198,15 +238,17 @@ pub(crate) async fn install(
         return Ok(ExitStatus::Success);
     };
 
-    // Read the existing installations, lock the directory for the duration
-    let installations = ManagedPythonInstallations::from_settings(install_dir)?.init()?;
-    let installations_dir = installations.root();
-    let scratch_dir = installations.scratch();
-    let _lock = installations.lock().await?;
-    let existing_installations: Vec<_> = installations
-        .find_all()?
-        .inspect(|installation| trace!("Found existing installation {}", installation.key()))
-        .collect();
+    if upgrade
+        && requests
+            .iter()
+            .any(|request| request.is_version_request() && !request.is_minor_request())
+    {
+        writeln!(
+            printer.stderr(),
+            "error: `uv python upgrade` only accepts minor versions"
+        )?;
+        return Ok(ExitStatus::Failure);
+    }
 
     // Find requests that are already satisfied
     let mut changelog = Changelog::default();
@@ -220,9 +262,7 @@ pub(crate) async fn install(
         for request in &requests {
             let mut matching_installations = existing_installations
                 .iter()
-                .filter(|installation| {
-                    request.matches_installation(installation)
-                })
+                .filter(|installation| request.matches_installation(installation))
                 .peekable();
 
             if matching_installations.peek().is_none() {
@@ -268,73 +308,6 @@ pub(crate) async fn install(
             }
         }
         (vec![], unsatisfied)
-    } else if upgrade && requests.is_empty() {
-        let mut minor_versions = FxHashSet::default();
-        for installation in &existing_installations {
-            minor_versions.insert(installation.version().python_version());
-        }
-        for version in minor_versions {
-
-        }
-        (vec![], vec![])
-
-        // FIXME
-        // let mut unsatisfied: Vec<Cow<InstallRequest>> =
-        //     Vec::with_capacity(existing_installations.len() + requests.len());
-
-        // for request in &requests {
-        //     let mut matching_installations = existing_installations
-        //         .iter()
-        //         .filter(|installation| {
-        //             // FIXME: Improve
-        //             request.managed_download_matches_installation(installation)
-        //         })
-        //         .peekable();
-
-        //     if matching_installations.peek().is_none() {
-        //         debug!("No installation found for request `{}`", request.cyan());
-        //         writeln!(
-        //             printer.stderr(),
-        //             "Cannot upgrade as there is no Python version installed. Use `uv python install <request>` to install another version.",
-        //         )?;
-        //         // FIXME
-        //         // unsatisfied.push(Cow::Borrowed(request));
-        //     }
-
-        //     for installation in matching_installations {
-        //         changelog.existing.insert(installation.key().clone());
-        //         if matches!(&request.request, &PythonRequest::Any) {
-        //             // Construct an install request matching the existing installation
-        //             match InstallRequest::new(
-        //                 PythonRequest::Key(installation.into()),
-        //                 python_downloads_json_url.as_deref(),
-        //             ) {
-        //                 Ok(request) => {
-        //                     debug!("Will reinstall `{}`", installation.key().green());
-        //                     unsatisfied.push(Cow::Owned(request));
-        //                 }
-        //                 Err(err) => {
-        //                     // This shouldn't really happen, but maybe a new version of uv dropped
-        //                     // support for a key we previously supported
-        //                     warn_user!(
-        //                         "Failed to create reinstall request for existing installation `{}`: {err}",
-        //                         installation.key().green()
-        //                     );
-        //                 }
-        //             }
-        //         } else {
-        //             // If we have real requests, just ignore the existing installation
-        //             debug!(
-        //                 "Ignoring match `{}` for request `{}` due to `--reinstall` flag",
-        //                 installation.key().green(),
-        //                 request.cyan()
-        //             );
-        //             unsatisfied.push(Cow::Borrowed(request));
-        //             break;
-        //         }
-        //     }
-        // }
-        // (vec![], unsatisfied)
     } else {
         // If we can find one existing installation that matches the request, it is satisfied
         requests.iter().partition_map(|request| {
@@ -466,8 +439,6 @@ pub(crate) async fn install(
             .expect("We should have a bin directory with preview enabled")
             .as_path();
 
-        // dbg!("bin: {:?} about to create_bin_links", &bin);
-
         create_bin_links(
             installation,
             bin,
@@ -492,19 +463,19 @@ pub(crate) async fn install(
 
     if changelog.installed.is_empty() && errors.is_empty() {
         if is_default_install {
+            writeln!(
+                printer.stderr(),
+                "Python is already installed. Use `uv python install <request>` to install another version.",
+            )?;
+        } else if requests.len() > 1 {
             if upgrade {
                 writeln!(
                     printer.stderr(),
-                    "Python versions are already at the latest patch. Use `uv python install <request>` to install another version.",
+                    "All requested versions already on latest patch"
                 )?;
             } else {
-                writeln!(
-                    printer.stderr(),
-                    "Python is already installed. Use `uv python install <request>` to install another version.",
-                )?;
+                writeln!(printer.stderr(), "All requested versions already installed")?;
             }
-        } else if requests.len() > 1 {
-            writeln!(printer.stderr(), "All requested versions already installed")?;
         }
         return Ok(ExitStatus::Success);
     }
