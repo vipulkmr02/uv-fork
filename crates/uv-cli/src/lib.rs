@@ -4851,16 +4851,10 @@ pub struct PythonUpgradeArgs {
     #[arg(long, short, env = EnvVars::UV_PYTHON_INSTALL_DIR)]
     pub install_dir: Option<PathBuf>,
 
-    /// The Python version(s) to install.
+    /// The Python minor version(s) to upgrade.
     ///
-    /// FIXME: What procedure will we follow for upgrade? We definitely don't want to
-    /// allow patch version provided via the command line arg
-    /// If not provided, the requested Python version(s) will be read from the `UV_PYTHON`
-    /// environment variable then `.python-versions` or `.python-version` files. If none of the
-    /// above are present, uv will check if it has installed any Python versions. If not, it will
-    /// install the latest stable version of Python.
-    ///
-    /// See `uv help python` to view supported request formats.
+    /// If not provided, uv will attempt to upgrade every minor version that has
+    /// been installed.
     #[arg(env = EnvVars::UV_PYTHON)]
     pub targets: Vec<String>,
 

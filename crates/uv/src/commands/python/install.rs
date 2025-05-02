@@ -82,7 +82,6 @@ impl InstallRequest {
         self.download_request.satisfied_by_key(installation.key())
     }
 
-    // FIXME: Rename
     fn managed_download_matches_installation(
         &self,
         installation: &ManagedPythonInstallation,
@@ -292,7 +291,6 @@ pub(crate) async fn install(
                         }
                     }
                 } else {
-                    // FIXME !@: Address this if possible
                     // TODO(zanieb): This isn't really right! But we need `--upgrade` or similar
                     // to handle this case correctly without causing a breaking change.
 
@@ -313,7 +311,6 @@ pub(crate) async fn install(
         requests.iter().partition_map(|request| {
             if let Some(installation) = existing_installations.iter().find(|installation| {
                 if upgrade {
-                    // FIXME: Improve
                     request.managed_download_matches_installation(installation)
                 } else {
                     request.matches_installation(installation)
@@ -422,7 +419,6 @@ pub(crate) async fn install(
         installation.ensure_externally_managed()?;
         installation.ensure_sysconfig_patched()?;
         installation.ensure_canonical_executables()?;
-        // FIXME !@
         installation.ensure_minor_version_link()?;
         if let Err(e) = installation.ensure_dylib_patched() {
             e.warn_user(installation);
@@ -433,7 +429,6 @@ pub(crate) async fn install(
             continue;
         }
 
-        // FIXME: We need to install to bin but use the symlink path for Windows launcher
         let bin = bin
             .as_ref()
             .expect("We should have a bin directory with preview enabled")

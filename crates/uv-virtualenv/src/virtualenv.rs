@@ -144,10 +144,8 @@ pub(crate) fn create(
     // Create a `.gitignore` file to ignore all files in the venv.
     fs::write(location.join(".gitignore"), "*")?;
 
-    // FIXME: In unix use symlink
     // Per PEP 405, the Python `home` is the parent directory of the interpreter.
     // FIXME: Doc
-    // FIXME !@
     // FIXME: This uses Zanie's is_managed
     let executable_target = if interpreter.is_managed() {
         interpreter.symlink_path_from_base_python(base_python.clone())?
@@ -170,13 +168,10 @@ pub(crate) fn create(
     fs::create_dir_all(&scripts)?;
     let executable = scripts.join(format!("python{EXE_SUFFIX}"));
 
-    // FIXME: In unix, replace base_python with symlink dir
     #[cfg(unix)]
     {
         // FIXME: Doc
         uv_fs::replace_symlink(&executable_target, &executable)?;
-        // FIXME !@ Remove
-        // uv_fs::replace_symlink(&base_python, &executable)?;
         uv_fs::replace_symlink(
             "python",
             scripts.join(format!("python{}", interpreter.python_major())),
@@ -203,9 +198,8 @@ pub(crate) fn create(
         }
     }
 
+    // FIXME: Replace comment
     // No symlinking on Windows, at least not on a regular non-dev non-admin Windows install.
-    // FIXME !@: Instead of using the copy method, we need the trampoline method except
-    // passing in symlink path to create the launcher
     if cfg!(windows) {
         create_venv_trampoline_windows(
             &executable_target,
@@ -308,7 +302,6 @@ pub(crate) fn create(
         ("uv".to_string(), version().to_string()),
         (
             "version_info".to_string(),
-            // FIXME !@
             interpreter.markers().python_version().string.clone(),
         ),
         (
@@ -449,6 +442,7 @@ impl WindowsExecutable {
     }
 }
 
+// FIXME Create new error?
 fn create_venv_trampoline_windows(
     executable: &Path,
     executable_kinds: &[WindowsExecutable],

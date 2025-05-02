@@ -180,7 +180,6 @@ impl PythonInstallation {
         installed.ensure_externally_managed()?;
         installed.ensure_sysconfig_patched()?;
         installed.ensure_canonical_executables()?;
-        // FIXME !@
         installed.ensure_minor_version_link()?;
         if let Err(e) = installed.ensure_dylib_patched() {
             e.warn_user(&installed);

@@ -185,14 +185,7 @@ impl Interpreter {
                                 self.python_major(),
                                 self.python_minor(),
                             ))
-                            // FIXME Is this what we want?
                             .join("python.exe");
-                        // FIXME !@
-                        // .join(format!(
-                        //     "python{}.{}",
-                        //     self.python_major(),
-                        //     self.python_minor()
-                        // ));
                         debug!(
                             "Using directory symlink instead of base Python: {}",
                             &path_link.display()
@@ -665,7 +658,6 @@ impl Interpreter {
             .any(|default_name| name == default_name.to_string())
     }
 
-    // FIXME !@
     /// FIXME Doc
     pub fn minor_symlink_path_executable(&self) -> Result<PathBuf, io::Error> {
         if self.is_virtualenv() {
