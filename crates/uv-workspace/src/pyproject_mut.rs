@@ -109,7 +109,7 @@ pub enum AddBoundsKind {
     Minor,
     /// Pin the exact version, e.g., `==1.2.3`.
     ///
-    /// This option is not recommended, as uv provides a lockfiles that pins versions.
+    /// This option is not recommended, as versions are already pinned in the uv lockfile.
     Exact,
 }
 
