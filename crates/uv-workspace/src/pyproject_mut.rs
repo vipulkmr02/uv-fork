@@ -677,7 +677,7 @@ impl PyProjectTomlMut {
         Ok(added)
     }
 
-    /// Set the minimum version for an existing dependency.
+    /// Set the constraint for a requirement for an existing dependency.
     pub fn set_dependency_bound(
         &mut self,
         dependency_type: &DependencyType,
@@ -686,12 +686,10 @@ impl PyProjectTomlMut {
         bound_kind: &AddBoundsKind,
     ) -> Result<(), Error> {
         let group = match dependency_type {
-            DependencyType::Production => self.set_project_dependency_bound()?,
-            DependencyType::Dev => self.set_dev_dependency_bound()?,
-            DependencyType::Optional(ref extra) => self.set_optional_dependency_bound(extra)?,
-            DependencyType::Group(ref group) => {
-                self.set_dependency_group_requirement_bound(group)?
-            }
+            DependencyType::Production => self.dependencies_array()?,
+            DependencyType::Dev => self.dev_dependencies_array()?,
+            DependencyType::Optional(ref extra) => self.optional_dependencies_array(extra)?,
+            DependencyType::Group(ref group) => self.dependency_groups_array(group)?,
         };
 
         let Some(req) = group.get(index) else {
@@ -710,8 +708,8 @@ impl PyProjectTomlMut {
         Ok(())
     }
 
-    /// Set the minimum version for an existing dependency in `project.dependencies`.
-    fn set_project_dependency_bound(&mut self) -> Result<&mut Array, Error> {
+    /// Get the TOML array for `project.dependencies`.
+    fn dependencies_array(&mut self) -> Result<&mut Array, Error> {
         // Get or create `project.dependencies`.
         let dependencies = self
             .project()?
@@ -723,8 +721,8 @@ impl PyProjectTomlMut {
         Ok(dependencies)
     }
 
-    /// Set the minimum version for an existing dependency in `tool.uv.dev-dependencies`.
-    fn set_dev_dependency_bound(&mut self) -> Result<&mut Array, Error> {
+    /// Get the TOML array for `tool.uv.dev-dependencies`.
+    fn dev_dependencies_array(&mut self) -> Result<&mut Array, Error> {
         // Get or create `tool.uv.dev-dependencies`.
         let dev_dependencies = self
             .doc
@@ -744,8 +742,8 @@ impl PyProjectTomlMut {
         Ok(dev_dependencies)
     }
 
-    /// Set the minimum version for an existing dependency in `project.optional-dependencies`.
-    fn set_optional_dependency_bound(&mut self, group: &ExtraName) -> Result<&mut Array, Error> {
+    /// Get the TOML array for a `project.optional-dependencies` entry.
+    fn optional_dependencies_array(&mut self, group: &ExtraName) -> Result<&mut Array, Error> {
         // Get or create `project.optional-dependencies`.
         let optional_dependencies = self
             .project()?
@@ -773,11 +771,8 @@ impl PyProjectTomlMut {
         Ok(group)
     }
 
-    /// Set the minimum version for an existing dependency in `dependency-groups`.
-    fn set_dependency_group_requirement_bound(
-        &mut self,
-        group: &GroupName,
-    ) -> Result<&mut Array, Error> {
+    /// Get the TOML array for a `dependency-groups` entry.
+    fn dependency_groups_array(&mut self, group: &GroupName) -> Result<&mut Array, Error> {
         // Get or create `dependency-groups`.
         let dependency_groups = self
             .doc
