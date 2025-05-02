@@ -785,9 +785,9 @@ uv add [OPTIONS] <PACKAGES|--requirements <REQUIREMENTS>>
 <ul>
 <li><code>lower</code>:  Only a lower bound, e.g., <code>&gt;=1.2.3</code></li>
 
-<li><code>major</code>:  Allow the same major version, similar to the semver caret, e.g., <code>&gt;=1.2.3,&lt;2.0.0</code></li>
+<li><code>major</code>:  Allow the same major version, similar to the semver caret, e.g., <code>&gt;=1.2.3, &lt;2.0.0</code></li>
 
-<li><code>minor</code>:  Allow the same minor version, similar to the semver tilde, e.g., <code>&gt;=1.2.3,&lt;1.3.0</code></li>
+<li><code>minor</code>:  Allow the same minor version, similar to the semver tilde, e.g., <code>&gt;=1.2.3, &lt;1.3.0</code></li>
 
 <li><code>exact</code>:  Pin the exact version, e.g., <code>==1.2.3</code></li>
 </ul>
