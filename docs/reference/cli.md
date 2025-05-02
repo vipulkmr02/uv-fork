@@ -4971,7 +4971,7 @@ uv python install [OPTIONS] [TARGETS]...
 
 Upgrade Python to the latest patch version.
 
-FIXME: Document
+Multiple Python minor versions may be requested. If none are provided, upgrades will be attempted for all installed minor versions.
 
 <h3 class="cli-reference">Usage</h3>
 

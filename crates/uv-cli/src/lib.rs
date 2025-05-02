@@ -4648,7 +4648,8 @@ pub enum PythonCommand {
 
     /// Upgrade Python to the latest patch version.
     ///
-    /// FIXME: Document
+    /// Multiple Python minor versions may be requested. If none are provided, upgrades will
+    /// be attempted for all installed minor versions.
     Upgrade(PythonUpgradeArgs),
 
     /// Search for a Python installation.

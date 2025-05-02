@@ -154,7 +154,7 @@ impl Interpreter {
                 .is_some_and(|c| c.as_os_str() == "bin")
             {
                 if let Some(path) = parent.parent().and_then(Path::parent) {
-                    let path_link = path.to_path_buf().join(&version).join("bin").join(&version);
+                    let path_link = path.to_path_buf().join(format!("{}-dir", &version)).join("bin").join(&version);
 
                     debug!(
                         "Using directory symlink instead of base Python: {}",
@@ -167,7 +167,7 @@ impl Interpreter {
             if parent.components().next_back().is_some() {
                 if let Some(path) = parent.parent() {
                     let version = format!("python{}.{}", self.python_major(), self.python_minor());
-                    let path_link = path.to_path_buf().join(&version).join("python.exe");
+                    let path_link = path.to_path_buf().join(format!("{}-dir", &version)).join("python.exe");
 
                     debug!(
                         "Using directory symlink instead of base Python: {}",
