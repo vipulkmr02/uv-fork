@@ -640,7 +640,6 @@ pub fn minor_symlink_path_from_base_python(
         #[cfg(windows)]
         if parent.components().next_back().is_some() {
             if let Some(path) = parent.parent() {
-                let version = format!("python{}.{}", major, minor);
                 let path_link = path
                     .to_path_buf()
                     .join(format!("{}-dir", &version))
