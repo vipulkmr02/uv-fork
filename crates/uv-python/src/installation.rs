@@ -154,6 +154,9 @@ impl PythonInstallation {
         let installations_dir = installations.root();
         let scratch_dir = installations.scratch();
         let _lock = installations.lock().await?;
+        let existing_installations: Vec<_> = installations
+            .find_all()?
+            .collect();
 
         let download = ManagedPythonDownload::from_request(&request, python_downloads_json_url)?;
         let client = client_builder.build();
@@ -180,7 +183,22 @@ impl PythonInstallation {
         installed.ensure_externally_managed()?;
         installed.ensure_sysconfig_patched()?;
         installed.ensure_canonical_executables()?;
-        installed.ensure_minor_version_link()?;
+
+        let minor_version = installed.version().python_version();
+        let highest_patch = existing_installations
+            .iter()
+            .filter(|installation| installation.version().python_version() == minor_version)
+            .filter_map(|installation| installation.version().patch())
+            .fold(
+                0,
+                |highest_seen, patch| {dbg!("highest: {:?}, next: {:?}", highest_seen, patch); if patch >= highest_seen { patch } else { highest_seen }}
+            );
+        dbg!("My patch: {:?}, highest_patch: {:?}", installed.version().patch(), highest_patch);
+        if installed.version().patch().is_some_and(|p| p >= highest_patch) {
+            dbg!("ENSURING!");
+            installed.ensure_minor_version_link()?;
+        }
+
         if let Err(e) = installed.ensure_dylib_patched() {
             e.warn_user(&installed);
         }
