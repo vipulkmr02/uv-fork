@@ -457,9 +457,6 @@ pub(crate) async fn install(
 
     // Read all existing installations, lock the directory for the duration
     let installations = ManagedPythonInstallations::from_settings(None)?.init()?;
-    let installations_dir = installations.root();
-    let scratch_dir = installations.scratch();
-    let _lock = installations.lock().await?;
     let existing_installations: Vec<_> = installations.find_all()?.collect();
 
     let mut minor_versions = FxHashMap::default();
