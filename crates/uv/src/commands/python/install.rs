@@ -455,8 +455,6 @@ pub(crate) async fn install(
         }
     }
 
-    dbg!("minor_versions: {:?}", minor_versions.values());
-
     // Read all existing installations, lock the directory for the duration
     let installations = ManagedPythonInstallations::from_settings(None)?.init()?;
     let installations_dir = installations.root();
@@ -480,6 +478,8 @@ pub(crate) async fn install(
             }
         }
     }
+
+    dbg!("minor_versins: {:?}", minor_versions.values());
 
     for (_, installation) in minor_versions.values() {
         installation.ensure_minor_version_link()?;
