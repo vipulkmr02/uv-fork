@@ -460,7 +460,7 @@ pub(crate) async fn install(
     let installations_dir = installations.root();
     let scratch_dir = installations.scratch();
     let _lock = installations.lock().await?;
-    let existing_installations = installations.find_all()?.collect();
+    let existing_installations: Vec<_> = installations.find_all()?.collect();
 
     let mut minor_versions = FxHashMap::default();
 
