@@ -455,14 +455,12 @@ pub(crate) async fn install(
         }
     }
 
-    // Read all existing installations, lock the directory for the duration
+    // Read all existing installations and find the highest installed patch
+    // for each installed minor version.
     let installations = ManagedPythonInstallations::from_settings(None)?.init()?;
     let existing_installations: Vec<_> = installations.find_all()?.collect();
-
     let mut minor_versions = FxHashMap::default();
-
     for installation in existing_installations {
-        dbg!("Next install version: {:?}", installation.version().version());
         // Add to minor versions map if this installation has the highest
         // patch seen for a minor version so far.
         let minor_version = installation.version().python_version();
@@ -476,8 +474,6 @@ pub(crate) async fn install(
             }
         }
     }
-
-    dbg!("minor_versins: {:?}", minor_versions.values());
 
     for (_, installation) in minor_versions.values() {
         installation.ensure_minor_version_link()?;

@@ -1518,7 +1518,6 @@ fn install_multiple_patches() {
     "
     );
 
-
     uv_snapshot!(context.filters(), context.venv().arg("-p").arg("3.12")
         .arg(context.venv.as_os_str()), @r"
     success: true
@@ -1606,7 +1605,6 @@ fn uninstall_highest_patch() {
     "
     );
 
-
     uv_snapshot!(context.filters(), context.venv().arg("-p").arg("3.12")
         .arg(context.venv.as_os_str()), @r"
     success: true
@@ -1630,7 +1628,7 @@ fn uninstall_highest_patch() {
     "
     );
 
-    // Install patches in descending order list
+    // Uninstall the highest patch version
     uv_snapshot!(context.filters(), context.python_uninstall().arg("3.12.10"), @r"
     success: true
     exit_code: 0

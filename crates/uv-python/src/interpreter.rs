@@ -145,46 +145,7 @@ impl Interpreter {
         &self,
         base_python: PathBuf,
     ) -> Result<PathBuf, io::Error> {
-        let version = format!("python{}.{}", self.python_major(), self.python_minor());
-        if let Some(parent) = base_python.parent() {
-            #[cfg(unix)]
-            if parent
-                .components()
-                .next_back()
-                .is_some_and(|c| c.as_os_str() == "bin")
-            {
-                if let Some(path) = parent.parent().and_then(Path::parent) {
-                    let path_link = path
-                        .to_path_buf()
-                        .join(format!("{}-dir", &version))
-                        .join("bin")
-                        .join(&version);
-
-                    debug!(
-                        "Using directory symlink instead of base Python: {}",
-                        &path_link.display()
-                    );
-                    return Ok(path_link);
-                }
-            }
-            #[cfg(windows)]
-            if parent.components().next_back().is_some() {
-                if let Some(path) = parent.parent() {
-                    let version = format!("python{}.{}", self.python_major(), self.python_minor());
-                    let path_link = path
-                        .to_path_buf()
-                        .join(format!("{}-dir", &version))
-                        .join("python.exe");
-
-                    debug!(
-                        "Using directory symlink instead of base Python: {}",
-                        &path_link.display()
-                    );
-                    return Ok(path_link);
-                }
-            }
-        }
-        Ok(base_python)
+        minor_symlink_path_from_base_python(self.python_major(), self.python_minor(), base_python)
     }
 
     /// Determine the base Python executable; that is, the Python executable that should be
@@ -645,6 +606,55 @@ impl Interpreter {
             .into_iter()
             .any(|default_name| name == default_name.to_string())
     }
+}
+
+/// Derive a path from base Python that substitutes a symlink directory
+/// (or junction on Windows) for a patch version directory.
+pub fn minor_symlink_path_from_base_python(
+    major: u8,
+    minor: u8,
+    base_python: PathBuf,
+) -> Result<PathBuf, io::Error> {
+    let version = format!("python{major}.{minor}");
+    if let Some(parent) = base_python.parent() {
+        #[cfg(unix)]
+        if parent
+            .components()
+            .next_back()
+            .is_some_and(|c| c.as_os_str() == "bin")
+        {
+            if let Some(path) = parent.parent().and_then(Path::parent) {
+                let path_link = path
+                    .to_path_buf()
+                    .join(format!("{}-dir", &version))
+                    .join("bin")
+                    .join(&version);
+
+                debug!(
+                    "Using directory symlink instead of base Python: {}",
+                    &path_link.display()
+                );
+                return Ok(path_link);
+            }
+        }
+        #[cfg(windows)]
+        if parent.components().next_back().is_some() {
+            if let Some(path) = parent.parent() {
+                let version = format!("python{}.{}", major, minor);
+                let path_link = path
+                    .to_path_buf()
+                    .join(format!("{}-dir", &version))
+                    .join("python.exe");
+
+                debug!(
+                    "Using directory symlink instead of base Python: {}",
+                    &path_link.display()
+                );
+                return Ok(path_link);
+            }
+        }
+    }
+    Ok(base_python)
 }
 
 /// The `EXTERNALLY-MANAGED` file in a Python installation.

@@ -186,11 +186,18 @@ impl PythonInstallation {
             .find_all()?
             .filter(|installation| installation.version().python_version() == minor_version)
             .filter_map(|installation| installation.version().patch())
-            .fold(
-                0,
-                |highest_seen, patch| if patch >= highest_seen { patch } else { highest_seen }
-            );
-        if installed.version().patch().is_some_and(|p| p >= highest_patch) {
+            .fold(0, |highest_seen, patch| {
+                if patch >= highest_seen {
+                    patch
+                } else {
+                    highest_seen
+                }
+            });
+        if installed
+            .version()
+            .patch()
+            .is_some_and(|p| p >= highest_patch)
+        {
             installed.ensure_minor_version_link()?;
         }
 

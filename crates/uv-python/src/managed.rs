@@ -511,9 +511,9 @@ impl ManagedPythonInstallation {
         Ok(())
     }
 
-    /// Ensure the environment contains the canonical Python executable names.
+    /// Ensure the environment contains the symlink directory pointing to the
+    /// patch for this minor version.
     pub fn ensure_minor_version_link(&self) -> Result<(), Error> {
-        dbg!("ensure_minor!");
         let python = self.executable(false);
         let version_name = format!("python{}.{}", self.key.major, self.key.minor);
         let link_dir = self.path().with_file_name(format!("{}-dir", &version_name));
