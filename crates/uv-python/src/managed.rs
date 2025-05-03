@@ -569,15 +569,13 @@ impl ManagedPythonInstallation {
 
     /// Ensure that the `sysconfig` data is patched to match the installation path.
     pub fn ensure_sysconfig_patched(&self) -> Result<(), Error> {
-        if cfg!(unix) {
-            if *self.implementation() == ImplementationName::CPython {
-                sysconfig::update_sysconfig(
-                    self.path(),
-                    self.key.major,
-                    self.key.minor,
-                    self.key.variant.suffix(),
-                )?;
-            }
+        if *self.implementation() == ImplementationName::CPython {
+            sysconfig::update_sysconfig(
+                self.path(),
+                self.key.major,
+                self.key.minor,
+                self.key.variant.suffix(),
+            )?;
         }
         Ok(())
     }

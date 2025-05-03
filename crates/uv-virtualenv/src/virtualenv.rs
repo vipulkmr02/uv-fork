@@ -144,7 +144,7 @@ pub(crate) fn create(
     // Create a `.gitignore` file to ignore all files in the venv.
     fs::write(location.join(".gitignore"), "*")?;
 
-    let executable_target = if interpreter.is_managed() {
+    let executable_target = if interpreter.is_standalone() {
         interpreter.symlink_path_from_base_python(base_python.clone())?
     } else {
         base_python.clone()

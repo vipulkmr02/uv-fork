@@ -152,6 +152,7 @@ static DEFAULT_VARIABLE_UPDATES: LazyLock<BTreeMap<String, Vec<ReplacementEntry>
     });
 
 /// Update the `sysconfig` data in a Python installation.
+#[cfg(unix)]
 pub(crate) fn update_sysconfig(
     install_root: &Path,
     major: u8,
@@ -199,6 +200,40 @@ pub(crate) fn update_sysconfig(
             file.sync_data()?;
         }
     }
+
+    Ok(())
+}
+
+#[cfg(windows)]
+pub(crate) fn update_sysconfig(
+    install_root: &Path,
+    major: u8,
+    minor: u8,
+    suffix: &str,
+) -> Result<(), Error> {
+    // Find the `_sysconfigdata_` file in the Python installation.
+    let real_prefix = std::path::absolute(install_root)?;
+    let sysconfigdata = find_sysconfigdata(&real_prefix, major, minor, suffix)?;
+    trace!(
+        "Discovered `sysconfig` data at: {}",
+        sysconfigdata.display()
+    );
+
+    // Update the `_sysconfigdata_` file in-memory.
+    let contents = fs_err::read_to_string(&sysconfigdata)?;
+    let data = SysconfigData::from_str(&contents)?;
+    let mut data = patch_sysconfigdata(data, &real_prefix);
+    data.insert("PYTHON_BUILD_STANDALONE".to_string(), Value::Int(1));
+    let contents = data.to_string_pretty()?;
+
+    // Write the updated `_sysconfigdata_` file.
+    let mut file = fs_err::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .create(true)
+        .open(&sysconfigdata)?;
+    file.write_all(contents.as_bytes())?;
+    file.sync_data()?;
 
     Ok(())
 }
