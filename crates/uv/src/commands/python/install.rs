@@ -460,10 +460,11 @@ pub(crate) async fn install(
     let installations_dir = installations.root();
     let scratch_dir = installations.scratch();
     let _lock = installations.lock().await?;
+    let existing_installations = installations.find_all()?.collect();
 
     let mut minor_versions = FxHashMap::default();
 
-    for installation in installations.find_all()? {
+    for installation in existing_installations {
         dbg!("Next install version: {:?}", installation.version().version());
         // Add to minor versions map if this installation has the highest
         // patch seen for a minor version so far.
