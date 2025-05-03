@@ -418,6 +418,7 @@ pub(crate) async fn install(
     // Ensure that the installations are _complete_ for both downloaded installations and existing
     // installations that match the request
     for installation in &installations {
+        dbg!("Next install version: {:?}", installation.version().full_version());
         // Add to minor versions map if this installation has the highest
         // patch seen for a minor version so far.
         let minor_version = installation.version().python_version();
@@ -469,6 +470,8 @@ pub(crate) async fn install(
             }
         }
     }
+
+    dbg!("minor_versions: {:?}", minor_versions.values());
 
     for (_, installation) in minor_versions.values() {
         installation.ensure_minor_version_link()?;

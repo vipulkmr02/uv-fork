@@ -191,11 +191,9 @@ impl PythonInstallation {
             .filter_map(|installation| installation.version().patch())
             .fold(
                 0,
-                |highest_seen, patch| {dbg!("highest: {:?}, next: {:?}", highest_seen, patch); if patch >= highest_seen { patch } else { highest_seen }}
+                |highest_seen, patch| if patch >= highest_seen { patch } else { highest_seen }
             );
-        dbg!("My patch: {:?}, highest_patch: {:?}", installed.version().patch(), highest_patch);
         if installed.version().patch().is_some_and(|p| p >= highest_patch) {
-            dbg!("ENSURING!");
             installed.ensure_minor_version_link()?;
         }
 
