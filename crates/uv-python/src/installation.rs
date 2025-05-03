@@ -154,9 +154,6 @@ impl PythonInstallation {
         let installations_dir = installations.root();
         let scratch_dir = installations.scratch();
         let _lock = installations.lock().await?;
-        let existing_installations: Vec<_> = installations
-            .find_all()?
-            .collect();
 
         let download = ManagedPythonDownload::from_request(&request, python_downloads_json_url)?;
         let client = client_builder.build();
@@ -185,8 +182,8 @@ impl PythonInstallation {
         installed.ensure_canonical_executables()?;
 
         let minor_version = installed.version().python_version();
-        let highest_patch = existing_installations
-            .iter()
+        let highest_patch = installations
+            .find_all()?
             .filter(|installation| installation.version().python_version() == minor_version)
             .filter_map(|installation| installation.version().patch())
             .fold(

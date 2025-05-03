@@ -413,25 +413,9 @@ pub(crate) async fn install(
 
     let installations: Vec<_> = downloaded.iter().chain(satisfied.iter().copied()).collect();
 
-    let mut minor_versions = FxHashMap::default();
-
     // Ensure that the installations are _complete_ for both downloaded installations and existing
     // installations that match the request
     for installation in &installations {
-        dbg!("Next install version: {:?}", installation.version().version());
-        // Add to minor versions map if this installation has the highest
-        // patch seen for a minor version so far.
-        let minor_version = installation.version().python_version();
-        if let Some(patch) = installation.version().patch() {
-            if let Some((current_patch, _)) = minor_versions.get(&minor_version) {
-                if patch >= *current_patch {
-                    minor_versions.insert(minor_version, (patch, installation));
-                }
-            } else {
-                minor_versions.insert(minor_version, (patch, installation));
-            }
-        }
-
         installation.ensure_externally_managed()?;
         installation.ensure_sysconfig_patched()?;
         installation.ensure_canonical_executables()?;
@@ -472,6 +456,30 @@ pub(crate) async fn install(
     }
 
     dbg!("minor_versions: {:?}", minor_versions.values());
+
+    // Read all existing installations, lock the directory for the duration
+    let installations = ManagedPythonInstallations::from_settings(None)?.init()?;
+    let installations_dir = installations.root();
+    let scratch_dir = installations.scratch();
+    let _lock = installations.lock().await?;
+
+    let mut minor_versions = FxHashMap::default();
+
+    for installation in installations.find_all()? {
+        dbg!("Next install version: {:?}", installation.version().version());
+        // Add to minor versions map if this installation has the highest
+        // patch seen for a minor version so far.
+        let minor_version = installation.version().python_version();
+        if let Some(patch) = installation.version().patch() {
+            if let Some((current_patch, _)) = minor_versions.get(&minor_version) {
+                if patch >= *current_patch {
+                    minor_versions.insert(minor_version, (patch, installation));
+                }
+            } else {
+                minor_versions.insert(minor_version, (patch, installation));
+            }
+        }
+    }
 
     for (_, installation) in minor_versions.values() {
         installation.ensure_minor_version_link()?;
