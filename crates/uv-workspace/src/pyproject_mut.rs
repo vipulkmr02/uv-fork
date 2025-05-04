@@ -150,13 +150,12 @@ impl AddBoundsKind {
                 // 0.1.2 -> 0.2.0
                 // 0.0.1 -> 0.0.2
                 let major = version.release().get(leading_zeroes).copied().unwrap_or(0);
+                // The length of the lower bound minus the leading zero and bumped component.
+                let trailing_zeros = version.release().iter().skip(leading_zeroes + 1).len();
                 let upper_bound = Version::new(
                     iter::repeat_n(0, leading_zeroes)
                         .chain(iter::once(major + 1))
-                        .chain(iter::repeat_n(
-                            0,
-                            version.release().iter().skip(leading_zeroes + 1).len(),
-                        )),
+                        .chain(iter::repeat_n(0, trailing_zeros)),
                 );
 
                 VersionSpecifiers::from_iter([
@@ -189,13 +188,12 @@ impl AddBoundsKind {
                 if leading_zeroes >= 2 {
                     let most_significant =
                         version.release().get(leading_zeroes).copied().unwrap_or(0);
+                    // The length of the lower bound minus the leading zero and bumped component.
+                    let trailing_zeros = version.release().iter().skip(leading_zeroes + 1).len();
                     let upper_bound = Version::new(
                         iter::repeat_n(0, leading_zeroes)
                             .chain(iter::once(most_significant + 1))
-                            .chain(iter::repeat_n(
-                                0,
-                                version.release().iter().skip(leading_zeroes + 2).len(),
-                            )),
+                            .chain(iter::repeat_n(0, trailing_zeros)),
                     );
                     return VersionSpecifiers::from_iter([
                         VersionSpecifier::greater_than_equal_version(version),
@@ -1712,7 +1710,7 @@ mod test {
             ("0.0.0.0", ">=0.0.0.0, <0.0.1.0"),
             ("0.1", ">=0.1, <0.1.1"),
             ("0.0.1", ">=0.0.1, <0.0.2"),
-            ("0.0.1.1", ">=0.0.1.1, <0.0.2"),
+            ("0.0.1.1", ">=0.0.1.1, <0.0.2.0"),
             ("0.0.0.1", ">=0.0.0.1, <0.0.0.2"),
             ("1", ">=1, <1.1"),
             ("1.0.0", ">=1.0.0, <1.1.0"),
