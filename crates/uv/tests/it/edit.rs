@@ -11503,6 +11503,65 @@ fn add_bounds() -> Result<()> {
     "#
     );
 
+    // Existing constraints take precedence over the bounds option
+    uv_snapshot!(context.filters(), context.add().arg("anyio").arg("--bounds").arg("minor").arg("--preview"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Resolved 4 packages in [TIME]
+    Audited 3 packages in [TIME]
+    ");
+
+    let pyproject_toml = context.read("pyproject.toml");
+    assert_snapshot!(
+        pyproject_toml, @r#"
+    [project]
+    name = "project"
+    version = "0.1.0"
+    requires-python = ">=3.12"
+    dependencies = [
+        "anyio>=4.3.0,<5.0.0",
+    ]
+
+    [tool.uv]
+    add-bounds = "major"
+    "#
+    );
+
+    // Explicit constraints take precedence over the bounds option
+    uv_snapshot!(context.filters(), context.add().arg("anyio==4.2").arg("idna").arg("--bounds").arg("minor").arg("--preview"), @r"
+    success: true
+    exit_code: 0
+    ----- stdout -----
+
+    ----- stderr -----
+    Resolved 4 packages in [TIME]
+    Prepared 1 package in [TIME]
+    Uninstalled 1 package in [TIME]
+    Installed 1 package in [TIME]
+     - anyio==4.3.0
+     + anyio==4.2.0
+    ");
+
+    let pyproject_toml = context.read("pyproject.toml");
+    assert_snapshot!(
+        pyproject_toml, @r#"
+    [project]
+    name = "project"
+    version = "0.1.0"
+    requires-python = ">=3.12"
+    dependencies = [
+        "anyio==4.2",
+        "idna>=3.6,<3.7",
+    ]
+
+    [tool.uv]
+    add-bounds = "major"
+    "#
+    );
+
     // Set bounds on the CLI and use `--preview` to silence the warning.
     uv_snapshot!(context.filters(), context.add().arg("sniffio").arg("--bounds").arg("minor").arg("--preview"), @r"
     success: true
@@ -11522,7 +11581,8 @@ fn add_bounds() -> Result<()> {
     version = "0.1.0"
     requires-python = ">=3.12"
     dependencies = [
-        "anyio>=4.3.0,<5.0.0",
+        "anyio==4.2",
+        "idna>=3.6,<3.7",
         "sniffio>=1.3.1,<1.4.0",
     ]
 
