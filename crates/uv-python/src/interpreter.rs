@@ -563,7 +563,7 @@ impl Interpreter {
     // set `PYTHON_BUILD_STANDALONE=1`.`
     #[cfg(windows)]
     pub fn is_standalone(&self) -> bool {
-        self.is_managed() && self.markers().implementation_name != "pypy" && self.markers().implementation_name != "graalpy"
+        self.standalone || (self.is_managed() && self.markers().implementation_name() != "pypy" && self.markers().implementation_name() != "graalpy")
     }
 
     /// Return the [`Layout`] environment used to install wheels into this interpreter.
