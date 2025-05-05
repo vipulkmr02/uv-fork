@@ -149,7 +149,9 @@ impl Interpreter {
         base_python: &Path,
     ) -> Result<Option<PathBuf>, io::Error> {
         let version = format!("python{}.{}", self.python_major(), self.python_minor());
-        if self.markers().implementation_name() == "pypy" || self.markers().implementation_name() == "graalpy" {
+        if self.markers().implementation_name() == "pypy"
+            || self.markers().implementation_name() == "graalpy"
+        {
             return Ok(None);
         }
         if let Some(parent) = base_python.parent() {
@@ -190,7 +192,6 @@ impl Interpreter {
             }
         }
         Ok(None)
-
     }
 
     /// Determine the base Python executable; that is, the Python executable that should be
@@ -563,7 +564,10 @@ impl Interpreter {
     // set `PYTHON_BUILD_STANDALONE=1`.`
     #[cfg(windows)]
     pub fn is_standalone(&self) -> bool {
-        self.standalone || (self.is_managed() && self.markers().implementation_name() != "pypy" && self.markers().implementation_name() != "graalpy")
+        self.standalone
+            || (self.is_managed()
+                && self.markers().implementation_name() != "pypy"
+                && self.markers().implementation_name() != "graalpy")
     }
 
     /// Return the [`Layout`] environment used to install wheels into this interpreter.

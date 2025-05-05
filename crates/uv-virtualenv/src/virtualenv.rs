@@ -3,7 +3,7 @@
 use std::env::consts::EXE_SUFFIX;
 use std::io;
 use std::io::{BufWriter, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use fs_err as fs;
 use fs_err::File;
@@ -145,7 +145,8 @@ pub(crate) fn create(
     fs::write(location.join(".gitignore"), "*")?;
 
     let executable_target = if interpreter.is_standalone() {
-        interpreter.maybe_symlink_path_from_base_python(base_python.as_path())?
+        interpreter
+            .maybe_symlink_path_from_base_python(base_python.as_path())?
             .unwrap_or_else(|| base_python.clone())
     } else {
         base_python.clone()
@@ -204,7 +205,7 @@ pub(crate) fn create(
     if cfg!(windows) {
         if interpreter.is_standalone() {
             let target = scripts.join(WindowsExecutable::Python.exe(interpreter));
-            create_bin_link(target.as_path(), PathBuf::from(executable_target)).map_err(Error::Python)?;
+            create_bin_link(target.as_path(), executable_target).map_err(Error::Python)?;
         } else {
             copy_launcher_windows(
                 WindowsExecutable::Python,
