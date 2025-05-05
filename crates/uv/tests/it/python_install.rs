@@ -1806,7 +1806,6 @@ fn install_lower_patch_automatically() {
         .with_filtered_python_keys()
         .with_filtered_exe_suffix()
         .with_managed_python_dirs()
-        .with_filtered_python_names()
         .with_filtered_python_install_bin();
 
     uv_snapshot!(context.filters(), context.python_install().arg("3.12.10"), @r"
@@ -1853,7 +1852,7 @@ fn install_lower_patch_automatically() {
     ----- stdout -----
 
     ----- stderr -----
-    warning: Virtual environments only record Python minor versions. You could use `uv python pin python.9` to pin the full version
+    warning: Virtual environments only record Python minor versions. You could use `uv python pin python3.12.9` to pin the full version
     Using CPython 3.12.9
     Creating virtual environment at: .venv
     Activate with: source .venv/[BIN]/activate
