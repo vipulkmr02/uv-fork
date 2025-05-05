@@ -139,13 +139,58 @@ impl Interpreter {
         Ok(base_python)
     }
 
-    /// Derive a path from base Python that substitutes a symlink directory
-    /// (or junction on Windows) for the patch version directory.
-    pub fn symlink_path_from_base_python(
+    /// Attempt to derive a path from base Python that substitutes a minor
+    /// version symlink directory (or junction on Windows) for the patch version
+    /// directory.
+    ///
+    /// If this interpreter is PyPy or GraalPy, return [`None`].
+    pub fn maybe_symlink_path_from_base_python(
         &self,
-        base_python: PathBuf,
-    ) -> Result<PathBuf, io::Error> {
-        minor_symlink_path_from_base_python(self.python_major(), self.python_minor(), base_python)
+        base_python: &Path,
+    ) -> Result<Option<PathBuf>, io::Error> {
+        let version = format!("python{}.{}", self.python_major(), self.python_minor());
+        if self.markers().implementation_name() == "pypy" || self.markers().implementation_name() == "graalpy" {
+            return Ok(None);
+        }
+        if let Some(parent) = base_python.parent() {
+            #[cfg(unix)]
+            if parent
+                .components()
+                .next_back()
+                .is_some_and(|c| c.as_os_str() == "bin")
+            {
+                if let Some(path) = parent.parent().and_then(Path::parent) {
+                    let path_link = path
+                        .to_path_buf()
+                        .join(format!("{}-dir", &version))
+                        .join("bin")
+                        .join(&version);
+
+                    debug!(
+                        "Using directory symlink instead of base Python: {}",
+                        &path_link.display()
+                    );
+                    return Ok(Some(path_link));
+                }
+            }
+            #[cfg(windows)]
+            if parent.components().next_back().is_some() {
+                if let Some(path) = parent.parent() {
+                    let path_link = path
+                        .to_path_buf()
+                        .join(format!("{}-dir", &version))
+                        .join("python.exe");
+
+                    debug!(
+                        "Using directory symlink instead of base Python: {}",
+                        &path_link.display()
+                    );
+                    return Ok(Some(path_link));
+                }
+            }
+        }
+        Ok(None)
+
     }
 
     /// Determine the base Python executable; that is, the Python executable that should be
@@ -508,8 +553,17 @@ impl Interpreter {
     /// `python-build-standalone`.
     ///
     /// See: <https://github.com/astral-sh/python-build-standalone/issues/382>
+    #[cfg(unix)]
     pub fn is_standalone(&self) -> bool {
         self.standalone
+    }
+
+    /// Returns `true` if an [`Interpreter`] may be a `python-build-standalone` interpreter.
+    // TODO(john): Replace this approach with patching sysconfig on Windows to
+    // set `PYTHON_BUILD_STANDALONE=1`.`
+    #[cfg(windows)]
+    pub fn is_standalone(&self) -> bool {
+        self.is_managed() && self.markers().implementation_name != "pypy" && self.markers().implementation_name != "graalpy"
     }
 
     /// Return the [`Layout`] environment used to install wheels into this interpreter.
@@ -606,54 +660,6 @@ impl Interpreter {
             .into_iter()
             .any(|default_name| name == default_name.to_string())
     }
-}
-
-/// Derive a path from base Python that substitutes a symlink directory
-/// (or junction on Windows) for a patch version directory.
-pub fn minor_symlink_path_from_base_python(
-    major: u8,
-    minor: u8,
-    base_python: PathBuf,
-) -> Result<PathBuf, io::Error> {
-    let version = format!("python{major}.{minor}");
-    if let Some(parent) = base_python.parent() {
-        #[cfg(unix)]
-        if parent
-            .components()
-            .next_back()
-            .is_some_and(|c| c.as_os_str() == "bin")
-        {
-            if let Some(path) = parent.parent().and_then(Path::parent) {
-                let path_link = path
-                    .to_path_buf()
-                    .join(format!("{}-dir", &version))
-                    .join("bin")
-                    .join(&version);
-
-                debug!(
-                    "Using directory symlink instead of base Python: {}",
-                    &path_link.display()
-                );
-                return Ok(path_link);
-            }
-        }
-        #[cfg(windows)]
-        if parent.components().next_back().is_some() {
-            if let Some(path) = parent.parent() {
-                let path_link = path
-                    .to_path_buf()
-                    .join(format!("{}-dir", &version))
-                    .join("python.exe");
-
-                debug!(
-                    "Using directory symlink instead of base Python: {}",
-                    &path_link.display()
-                );
-                return Ok(path_link);
-            }
-        }
-    }
-    Ok(base_python)
 }
 
 /// The `EXTERNALLY-MANAGED` file in a Python installation.

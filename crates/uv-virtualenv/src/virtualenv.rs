@@ -144,14 +144,15 @@ pub(crate) fn create(
     // Create a `.gitignore` file to ignore all files in the venv.
     fs::write(location.join(".gitignore"), "*")?;
 
-    let executable_target = if interpreter.is_managed() {
-        interpreter.symlink_path_from_base_python(base_python.clone())?
+    let executable_target = if interpreter.is_standalone() {
+        interpreter.maybe_symlink_path_from_base_python(base_python.as_path())?
+            .unwrap_or_else(|| base_python.clone())
     } else {
         base_python.clone()
     };
 
     // Per PEP 405, the Python `home` is the parent directory of the interpreter.
-    // For managed interpreters, this `home` value will include a symlink directory
+    // For standalone interpreters, this `home` value will include a symlink directory
     // on Unix or junction on Windows to enable transparent Python patch upgrades.
     let python_home = executable_target
         .parent()
@@ -197,8 +198,9 @@ pub(crate) fn create(
         }
     }
 
-    // On Windows, we use trampolines that point to our junction-containing executable link.
-    // TODO(john): I think we can do this directly with junctions.
+    // On Windows, we use trampolines that point to an executable target. For standalone
+    // interpreters, this target path includes a minor version junction to enable
+    // transparent upgrades.
     if cfg!(windows) {
         create_venv_trampoline_windows(
             &executable_target,

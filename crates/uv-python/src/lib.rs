@@ -12,7 +12,7 @@ pub use crate::environment::{InvalidEnvironmentKind, PythonEnvironment};
 pub use crate::implementation::ImplementationName;
 pub use crate::installation::{PythonInstallation, PythonInstallationKey};
 pub use crate::interpreter::{
-    minor_symlink_path_from_base_python, Error as InterpreterError, Interpreter,
+    Error as InterpreterError, Interpreter,
 };
 pub use crate::pointer_size::PointerSize;
 pub use crate::prefix::Prefix;

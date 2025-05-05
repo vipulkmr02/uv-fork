@@ -514,6 +514,11 @@ impl ManagedPythonInstallation {
     /// Ensure the environment contains the symlink directory pointing to the
     /// patch for this minor version.
     pub fn ensure_minor_version_link(&self) -> Result<(), Error> {
+        if let LenientImplementationName::Known(name) = self.key.implementation() {
+            if matches!(name, ImplementationName::PyPy | ImplementationName::GraalPy) {
+                return Ok(());
+            }
+        }
         let python = self.executable(false);
         let version_name = format!("python{}.{}", self.key.major, self.key.minor);
         let link_dir = self.path().with_file_name(format!("{}-dir", &version_name));

@@ -446,7 +446,7 @@ hint: If you are running a script with `{}` in the shebang, you may need to incl
     // The lockfile used for the base environment.
     let mut lock: Option<(Lock, PathBuf)> = None;
 
-    // When discovering the Python interpreter, do we request a specific
+    // When discovering the Python interpreter, did we request a specific
     // patch version?
     let mut is_patch_request = false;
 
@@ -1230,18 +1230,13 @@ impl RunCommand {
     fn as_command(&self, interpreter: &Interpreter, is_patch_request: bool) -> Command {
         match self {
             Self::Python(args) => {
-                let mut process = if is_patch_request {
+                let mut process = if is_patch_request || interpreter.is_virtualenv() {
                     Command::new(interpreter.sys_executable())
                 } else {
-                    let executable = if interpreter.is_virtualenv() {
-                        PathBuf::from(interpreter.sys_executable())
-                    } else {
-                        interpreter
-                            .symlink_path_from_base_python(PathBuf::from(
-                                interpreter.sys_executable(),
-                            ))
-                            .expect("symlink path should be derivable from executable path")
-                    };
+                    let executable = interpreter
+                        .maybe_symlink_path_from_base_python(interpreter.sys_executable())
+                        .expect("symlink path should be derivable from executable path")
+                        .unwrap_or_else(|| PathBuf::from(interpreter.sys_executable()));
                     Command::new(executable)
                 };
                 process.args(args);
