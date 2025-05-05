@@ -177,6 +177,7 @@ async fn do_uninstall(
         };
 
         fs_err::remove_file(&executable)?;
+        dbg!("executable: {:?}", &executable);
         debug!(
             "Removed `{}` for `{}`",
             executable.simplified_display(),
@@ -232,7 +233,7 @@ async fn do_uninstall(
             });
     let installations = ManagedPythonInstallations::from_settings(None)?.init()?;
     let remaining_installations: Vec<_> = installations.find_all()?.collect();
-    let mut minor_versions = FxHashMap::default();
+    let mut remaining_minor_versions = FxHashMap::default();
     for installation in remaining_installations {
         // Add to minor versions map if this installation has the highest
         // patch seen for a minor version so far.
@@ -241,16 +242,16 @@ async fn do_uninstall(
             continue;
         }
         if let Some(patch) = installation.version().patch() {
-            if let Some((current_patch, _)) = minor_versions.get(&minor_version) {
+            if let Some((current_patch, _)) = remaining_minor_versions.get(&minor_version) {
                 if patch >= *current_patch {
-                    minor_versions.insert(minor_version, (patch, installation));
+                    remaining_minor_versions.insert(minor_version, (patch, installation));
                 }
             } else {
-                minor_versions.insert(minor_version, (patch, installation));
+                remaining_minor_versions.insert(minor_version, (patch, installation));
             }
         }
     }
-    for (_, installation) in minor_versions.values() {
+    for (_, installation) in remaining_minor_versions.values() {
         installation.ensure_minor_version_link()?;
     }
 
