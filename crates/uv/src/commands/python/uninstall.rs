@@ -177,7 +177,6 @@ async fn do_uninstall(
         };
 
         fs_err::remove_file(&executable)?;
-        dbg!("executable: {:?}", &executable);
         debug!(
             "Removed `{}` for `{}`",
             executable.simplified_display(),
