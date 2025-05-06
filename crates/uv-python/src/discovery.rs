@@ -1073,6 +1073,7 @@ pub(crate) fn find_python_installation(
 
         // If it's an error, we're done.
         let Ok(Ok(ref installation)) = result else {
+            dbg!("DONE");
             return result;
         };
 
@@ -1117,6 +1118,7 @@ pub(crate) fn find_python_installation(
         // If we didn't skip it, this is the installation to use
         return result;
     }
+    dbg!("Post-result");
 
     // If we only found pre-releases, they're implicitly allowed and we should return the first one.
     if let Some(installation) = first_prerelease {
@@ -1126,8 +1128,10 @@ pub(crate) fn find_python_installation(
     // If we found a Python, but it was unusable for some reason, report that instead of saying we
     // couldn't find any Python interpreters.
     if let Some(err) = first_error {
+        dbg!("Unusable Python");
         return Err(err);
     }
+    dbg!("PythonNotFound");
 
     Ok(Err(PythonNotFound {
         request: request.clone(),

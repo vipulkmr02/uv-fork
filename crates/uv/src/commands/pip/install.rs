@@ -172,6 +172,7 @@ pub(crate) async fn pip_install(
     dbg!("looking for environment");
     // Detect the current Python interpreter.
     let environment = if target.is_some() || prefix.is_some() {
+        dbg!("PythonInstallation::find.... target is some || prefix is some");
         let installation = PythonInstallation::find(
             &python
                 .as_deref()
@@ -184,6 +185,7 @@ pub(crate) async fn pip_install(
         report_interpreter(&installation, true, printer)?;
         PythonEnvironment::from_installation(installation)
     } else {
+        dbg!("PythonEnvironment::find.... !(target is some || prefix is some)");
         let environment = PythonEnvironment::find(
             &python
                 .as_deref()
