@@ -174,8 +174,10 @@ To upgrade all installed Python minor versions to their latest patch versions:
 uv python upgrade
 ```
 
-All virtual environments created by uv on a minor version will transparently upgrade when that minor version is upgraded. A virtual environment [pinned to a patch version](../reference/cli.md/#uv-python-pin) will not transparently upgrade but will continue to respect the patch version.
-
+All virtual environments created by uv on a minor version will transparently upgrade when that minor
+version is upgraded. A virtual environment
+[pinned to a patch version](../reference/cli.md/#uv-python-pin) will not transparently upgrade but
+will continue to respect the patch version.
 
 ## Project Python versions
 

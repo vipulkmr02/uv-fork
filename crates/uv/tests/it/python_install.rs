@@ -1382,6 +1382,7 @@ fn install_transparent_patch_upgrade_uv_venv() {
         .with_filtered_python_names()
         .with_filtered_python_install_bin();
 
+    // Install a lower patch version.
     uv_snapshot!(context.filters(), context.python_install().arg("3.12.9"), @r"
     success: true
     exit_code: 0
@@ -1393,6 +1394,7 @@ fn install_transparent_patch_upgrade_uv_venv() {
     "
     );
 
+    // Create a virtual environment.
     uv_snapshot!(context.filters(), context.venv().arg("-p").arg("3.12")
         .arg(context.venv.as_os_str()), @r"
     success: true
@@ -1416,6 +1418,7 @@ fn install_transparent_patch_upgrade_uv_venv() {
     "
     );
 
+    // Install a higher patch version.
     uv_snapshot!(context.filters(), context.python_install().arg("3.12.10"), @r"
     success: true
     exit_code: 0
@@ -1427,6 +1430,7 @@ fn install_transparent_patch_upgrade_uv_venv() {
     "
     );
 
+    // Virtual environment should reflect higher version.
     uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
     success: true
     exit_code: 0
@@ -1448,6 +1452,7 @@ fn install_lower_patch() {
         .with_filtered_python_names()
         .with_filtered_python_install_bin();
 
+    // Install a lower patch version.
     uv_snapshot!(context.filters(), context.python_install().arg("3.12.10"), @r"
     success: true
     exit_code: 0
@@ -1459,6 +1464,7 @@ fn install_lower_patch() {
     "
     );
 
+    // Create a virtual environment.
     uv_snapshot!(context.filters(), context.venv().arg("-p").arg("3.12")
         .arg(context.venv.as_os_str()), @r"
     success: true
@@ -1472,6 +1478,7 @@ fn install_lower_patch() {
     "
     );
 
+    // Install a higher patch version.
     uv_snapshot!(context.filters(), context.python_install().arg("3.12.9"), @r"
     success: true
     exit_code: 0
@@ -1483,6 +1490,7 @@ fn install_lower_patch() {
     "
     );
 
+    // Virtual environment should reflect higher version.
     uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
     success: true
     exit_code: 0
@@ -1505,7 +1513,7 @@ fn install_multiple_patches() {
         .with_filtered_python_names()
         .with_filtered_python_install_bin();
 
-    // Install patches in ascending order list
+    // Install 3.12 patches in ascending order list
     uv_snapshot!(context.filters(), context.python_install().arg("3.12.9").arg("3.12.10"), @r"
     success: true
     exit_code: 0
@@ -1518,6 +1526,7 @@ fn install_multiple_patches() {
     "
     );
 
+    // Create a virtual environment.
     uv_snapshot!(context.filters(), context.venv().arg("-p").arg("3.12")
         .arg(context.venv.as_os_str()), @r"
     success: true
@@ -1531,6 +1540,7 @@ fn install_multiple_patches() {
     "
     );
 
+    // Virtual environment should be on highest installed patch.
     uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
     success: true
     exit_code: 0
@@ -1541,7 +1551,10 @@ fn install_multiple_patches() {
     "
     );
 
-    // Install patches in descending order list
+    // Remove the original virtual environment
+    fs_err::remove_dir_all(&context.venv).unwrap();
+
+    // Install 3.10 patches in descending order list
     uv_snapshot!(context.filters(), context.python_install().arg("3.10.17").arg("3.10.8"), @r"
     success: true
     exit_code: 0
@@ -1554,8 +1567,7 @@ fn install_multiple_patches() {
     "
     );
 
-    fs_err::remove_dir_all(&context.venv).unwrap();
-
+    // Create a virtual environment on 3.10.
     uv_snapshot!(context.filters(), context.venv().arg("-p").arg("3.10")
         .arg(context.venv.as_os_str()), @r"
     success: true
@@ -1569,6 +1581,7 @@ fn install_multiple_patches() {
     "
     );
 
+    // Virtual environment should be on highest installed patch.
     uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
     success: true
     exit_code: 0
@@ -1641,6 +1654,7 @@ fn uninstall_highest_patch() {
     "
     );
 
+    // Virtual environment should be on highest patch version remaining.
     uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
     success: true
     exit_code: 0
@@ -1699,6 +1713,7 @@ fn install_transparent_upgrade_despite_venv_patch_specification() {
     "
     );
 
+    // Install a higher patch version.
     uv_snapshot!(context.filters(), context.python_install().arg("3.12.10"), @r"
     success: true
     exit_code: 0
@@ -1756,7 +1771,7 @@ fn install_transparent_patch_upgrade_venv_module() {
     "
     );
 
-    // Set up a virtual environment using venv module
+    // Create a virtual environment using venv module
     uv_snapshot!(context.filters(), context.run().arg("python").arg("-m").arg("venv").arg(context.venv.as_os_str()).arg("--without-pip")
         .env(EnvVars::PATH, bin_dir.as_os_str()), @r"
     success: true
@@ -1776,6 +1791,7 @@ fn install_transparent_patch_upgrade_venv_module() {
     "
     );
 
+    // Install a higher patch version
     uv_snapshot!(context.filters(), context.python_install().arg("3.12.10"), @r"
     success: true
     exit_code: 0
@@ -1787,6 +1803,7 @@ fn install_transparent_patch_upgrade_venv_module() {
     "
     );
 
+    // Virtual environment should reflect highest patch version.
     uv_snapshot!(context.filters(), context.run().arg("python").arg("--version"), @r"
     success: true
     exit_code: 0
