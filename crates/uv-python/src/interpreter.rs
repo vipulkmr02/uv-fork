@@ -149,6 +149,7 @@ impl Interpreter {
         base_python: &Path,
     ) -> Result<Option<PathBuf>, io::Error> {
         let version = format!("python{}.{}", self.python_major(), self.python_minor());
+        let file_name = base_python.file_name().expect("base_python to have a file name");
         if self.markers().implementation_name() == "pypy"
             || self.markers().implementation_name() == "graalpy"
         {
@@ -166,10 +167,10 @@ impl Interpreter {
                         .to_path_buf()
                         .join(format!("{}-dir", &version))
                         .join("bin")
-                        .join(&version);
+                        .join(file_name);
 
                     debug!(
-                        "Using directory symlink instead of base Python: {}",
+                        "Using directory symlink instead of base Python path: {}",
                         &path_link.display()
                     );
                     return Ok(Some(path_link));
@@ -181,10 +182,10 @@ impl Interpreter {
                     let path_link = path
                         .to_path_buf()
                         .join(format!("{}-dir", &version))
-                        .join("python.exe");
+                        .join("file_name");
 
                     debug!(
-                        "Using directory symlink instead of base Python: {}",
+                        "Using junction instead of base Python path: {}",
                         &path_link.display()
                     );
                     return Ok(Some(path_link));
