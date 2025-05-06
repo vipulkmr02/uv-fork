@@ -169,6 +169,7 @@ pub(crate) async fn pip_install(
             )
             .collect();
 
+    dbg!("looking for environment");
     // Detect the current Python interpreter.
     let environment = if target.is_some() || prefix.is_some() {
         let installation = PythonInstallation::find(
@@ -195,6 +196,7 @@ pub(crate) async fn pip_install(
         environment
     };
 
+    dbg!("Ok, apply directories");
     // Apply any `--target` or `--prefix` directories.
     let environment = if let Some(target) = target {
         debug!(
@@ -212,6 +214,7 @@ pub(crate) async fn pip_install(
         environment
     };
 
+    dbg!("Check if external");
     // If the environment is externally managed, abort.
     if let Some(externally_managed) = environment.interpreter().is_externally_managed() {
         if break_system_packages {
@@ -242,6 +245,7 @@ pub(crate) async fn pip_install(
         interpreter,
     );
 
+    dbg!("find site_packages");
     // Determine the set of installed packages.
     let site_packages = SitePackages::from_environment(&environment)?;
 

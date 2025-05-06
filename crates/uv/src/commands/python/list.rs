@@ -116,6 +116,7 @@ pub(crate) async fn list(
         }
     }
 
+    dbg!("list.rs");
     let installed =
         match kinds {
             PythonListKinds::Installed | PythonListKinds::Default => {

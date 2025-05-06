@@ -882,6 +882,7 @@ pub fn find_python_installations<'a>(
     preference: PythonPreference,
     cache: &'a Cache,
 ) -> Box<dyn Iterator<Item = Result<FindPythonResult, Error>> + 'a> {
+    dbg!("And now find_python_installations");
     let sources = DiscoveryPreferences {
         python_preference: preference,
         environment_preference: environments,
@@ -1054,6 +1055,7 @@ pub(crate) fn find_python_installation(
     preference: PythonPreference,
     cache: &Cache,
 ) -> Result<FindPythonResult, Error> {
+    dbg!("find_python_installation(): calling find_python_installations");
     let installations = find_python_installations(request, environments, preference, cache);
     let mut first_prerelease = None;
     let mut first_error = None;
