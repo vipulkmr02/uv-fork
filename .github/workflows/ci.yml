@@ -212,14 +212,22 @@ jobs:
       - name: "Install Rust toolchain"
         run: rustup show
 
-      - uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6.0.1
-      - name: "Install required Python versions"
-        run: uv python install
-
       - name: "Install cargo nextest"
         uses: taiki-e/install-action@ab3728c7ba6948b9b429627f4d55a68842b27f18 # v2.50.3
         with:
           tool: cargo-nextest
+
+      - name: "Build the uv binary"
+        run: |
+          cargo nextest run \
+            --features python-patch \
+            --workspace \
+            --status-level skip --failure-output immediate-final --no-fail-fast -j 20 --final-status-level slow
+            --no-run
+
+      - uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6.0.1
+      - name: "Install required Python versions"
+        run: target/debug/uv python install
 
       - name: "Cargo test"
         run: |
@@ -244,14 +252,23 @@ jobs:
       - name: "Install Rust toolchain"
         run: rustup show
 
-      - uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6.0.1
-      - name: "Install required Python versions"
-        run: uv python install
-
       - name: "Install cargo nextest"
         uses: taiki-e/install-action@ab3728c7ba6948b9b429627f4d55a68842b27f18 # v2.50.3
         with:
           tool: cargo-nextest
+
+      - name: "Build the uv binary"
+        run: |
+          cargo nextest run \
+            --no-default-features \
+            --features python,python-managed,pypi,git,performance,crates-io \
+            --workspace \
+            --status-level skip --failure-output immediate-final --no-fail-fast -j 12 --final-status-level slow
+            --no-run
+
+      - uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6.0.1
+      - name: "Install required Python versions"
+        run: target/debug/uv python install
 
       - name: "Cargo test"
         run: |
@@ -278,9 +295,25 @@ jobs:
         run: |
           Copy-Item -Path "${{ github.workspace }}" -Destination "${{ env.UV_WORKSPACE }}" -Recurse
 
+      - name: "Install cargo nextest"
+        uses: taiki-e/install-action@ab3728c7ba6948b9b429627f4d55a68842b27f18 # v2.50.3
+        with:
+          tool: cargo-nextest
+
+      - name: "Build the uv binary"
+        working-directory: ${{ env.UV_WORKSPACE }}
+        shell: bash
+        run: |
+          cargo nextest run \
+            --no-default-features \
+            --features python,pypi,python-managed \
+            --workspace \
+            --status-level skip --failure-output immediate-final --no-fail-fast -j 20 --final-status-level slow
+            --no-run
+
       - uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6.0.1
       - name: "Install required Python versions"
-        run: uv python install
+        run: target/debug/uv python install
 
       - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
         with:
@@ -289,11 +322,6 @@ jobs:
       - name: "Install Rust toolchain"
         working-directory: ${{ env.UV_WORKSPACE }}
         run: rustup show
-
-      - name: "Install cargo nextest"
-        uses: taiki-e/install-action@ab3728c7ba6948b9b429627f4d55a68842b27f18 # v2.50.3
-        with:
-          tool: cargo-nextest
 
       - name: "Cargo test"
         working-directory: ${{ env.UV_WORKSPACE }}
