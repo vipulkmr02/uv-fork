@@ -182,7 +182,7 @@ impl Interpreter {
                     let path_link = path
                         .to_path_buf()
                         .join(format!("{}-dir", &version))
-                        .join("file_name");
+                        .join(file_name);
 
                     debug!(
                         "Using junction instead of base Python path: {}",
