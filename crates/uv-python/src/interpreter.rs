@@ -26,7 +26,7 @@ use uv_platform_tags::{Tags, TagsError};
 use uv_pypi_types::{ResolverMarkerEnvironment, Scheme};
 
 use crate::implementation::LenientImplementationName;
-use crate::managed::ManagedPythonInstallations;
+use crate::managed::{symlink_directory_name, ManagedPythonInstallations};
 use crate::platform::{Arch, Libc, Os};
 use crate::pointer_size::PointerSize;
 use crate::{
@@ -148,7 +148,7 @@ impl Interpreter {
         &self,
         base_python: &Path,
     ) -> Result<Option<PathBuf>, io::Error> {
-        let version = format!("python{}.{}", self.python_major(), self.python_minor());
+        let symlink_directory = symlink_directory_name(self.python_major(), self.python_minor());
         let file_name = base_python.file_name().expect("base_python to have a file name");
         if self.markers().implementation_name() == "pypy"
             || self.markers().implementation_name() == "graalpy"
@@ -165,7 +165,7 @@ impl Interpreter {
                 if let Some(path) = parent.parent().and_then(Path::parent) {
                     let path_link = path
                         .to_path_buf()
-                        .join(format!("{}-dir", &version))
+                        .join(symlink_directory)
                         .join("bin")
                         .join(file_name);
 
@@ -181,7 +181,7 @@ impl Interpreter {
                 if let Some(path) = parent.parent() {
                     let path_link = path
                         .to_path_buf()
-                        .join(format!("{}-dir", &version))
+                        .join(symlink_directory)
                         .join(file_name);
 
                     debug!(

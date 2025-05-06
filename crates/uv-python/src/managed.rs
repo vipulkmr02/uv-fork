@@ -511,17 +511,18 @@ impl ManagedPythonInstallation {
         Ok(())
     }
 
-    /// Ensure the environment contains the symlink directory pointing to the
-    /// patch for this minor version.
+    /// Ensure the environment contains the symlink directory (or junction on Windows)
+    /// pointing to the patch directory for this minor version.
     pub fn ensure_minor_version_link(&self) -> Result<(), Error> {
+        // We don't currently support transparent upgrades for PyPy or GraalPy
+        // so we don't create a symlink directory (or junction on Windows).
         if let LenientImplementationName::Known(name) = self.key.implementation() {
             if matches!(name, ImplementationName::PyPy | ImplementationName::GraalPy) {
                 return Ok(());
             }
         }
         let python = self.executable(false);
-        let version_name = format!("python{}.{}", self.key.major, self.key.minor);
-        let link_dir = self.path().with_file_name(format!("{}-dir", &version_name));
+        let link_dir = self.path().with_file_name(symlink_directory_name(self.key.major, self.key.minor));
 
         match replace_symlink(self.path(), &link_dir) {
             Ok(()) => {
@@ -716,6 +717,12 @@ pub fn create_bin_link(target: &Path, executable: PathBuf) -> Result<(), Error> 
     } else {
         unimplemented!("Only Windows and Unix systems are supported.")
     }
+}
+
+/// Return the symlink directory (or junction on Windows) name for this
+/// minor version.
+pub fn symlink_directory_name(major: u8, minor: u8) -> String {
+    format!("python{major}.{minor}-dir")
 }
 
 // TODO(zanieb): Only used in tests now.
