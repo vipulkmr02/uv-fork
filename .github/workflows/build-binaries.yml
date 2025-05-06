@@ -426,7 +426,7 @@ jobs:
           install: |
             apt-get update
             apt-get install -y --no-install-recommends curl
-            curl -LsSf https://astral.sh/uv/0.6.17/install.sh | sh
+            curl -k -LsSf https://astral.sh/uv/0.6.17/install.sh | sh
           run: |
             ~/.local/bin/uv venv
             ~/.local/bin/uv pip install ${{ env.PACKAGE_NAME }} --no-index --find-links dist/ --force-reinstall
