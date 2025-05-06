@@ -149,7 +149,9 @@ impl Interpreter {
         base_python: &Path,
     ) -> Result<Option<PathBuf>, io::Error> {
         let symlink_directory = symlink_directory_name(self.python_major(), self.python_minor());
-        let file_name = base_python.file_name().expect("base_python to have a file name");
+        let file_name = base_python
+            .file_name()
+            .expect("base_python to have a file name");
         if self.markers().implementation_name() == "pypy"
             || self.markers().implementation_name() == "graalpy"
         {
@@ -179,10 +181,7 @@ impl Interpreter {
             #[cfg(windows)]
             if parent.components().next_back().is_some() {
                 if let Some(path) = parent.parent() {
-                    let path_link = path
-                        .to_path_buf()
-                        .join(symlink_directory)
-                        .join(file_name);
+                    let path_link = path.to_path_buf().join(symlink_directory).join(file_name);
 
                     debug!(
                         "Using junction instead of base Python path: {}",

@@ -1252,7 +1252,7 @@ impl TestContext {
 
     /// Creates a new `Command` that is intended to be suitable for use in
     /// all tests.
-    pub fn new_command(&self) -> Command {
+    fn new_command(&self) -> Command {
         self.new_command_with(&get_bin())
     }
 

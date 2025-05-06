@@ -522,7 +522,9 @@ impl ManagedPythonInstallation {
             }
         }
         let python = self.executable(false);
-        let link_dir = self.path().with_file_name(symlink_directory_name(self.key.major, self.key.minor));
+        let link_dir = self
+            .path()
+            .with_file_name(symlink_directory_name(self.key.major, self.key.minor));
 
         match replace_symlink(self.path(), &link_dir) {
             Ok(()) => {

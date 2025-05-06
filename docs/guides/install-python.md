@@ -120,6 +120,8 @@ To force uv to use the system Python, provide the `--no-managed-python` flag. Se
 [Python version preference](../concepts/python-versions.md#requiring-or-disabling-managed-python-versions)
 documentation for more details.
 
+## Upgrading FIXME
+
 ## Next steps
 
 To learn more about `uv python`, see the [Python version concept](../concepts/python-versions.md)

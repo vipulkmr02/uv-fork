@@ -1230,12 +1230,15 @@ impl RunCommand {
     fn as_command(&self, interpreter: &Interpreter, is_patch_request: bool) -> Command {
         match self {
             Self::Python(args) => {
-                let mut process = if is_patch_request || interpreter.is_virtualenv() {
+                let mut process = if !interpreter.is_standalone()
+                    || is_patch_request
+                    || interpreter.is_virtualenv()
+                {
                     Command::new(interpreter.sys_executable())
                 } else {
                     let executable = interpreter
                         .maybe_symlink_path_from_base_python(interpreter.sys_executable())
-                        .expect("symlink path should be derivable from executable path")
+                        .expect("symlink path should be derivable from standalone executable path")
                         .unwrap_or_else(|| PathBuf::from(interpreter.sys_executable()));
                     Command::new(executable)
                 };

@@ -186,7 +186,7 @@ impl PythonInstallation {
             .find_all()?
             .filter(|installation| installation.version().python_version() == minor_version)
             .filter_map(|installation| installation.version().patch())
-            .fold(0, |highest_seen, patch| std::cmp::max(highest_seen, patch));
+            .fold(0, std::cmp::max);
         if installed
             .version()
             .patch()
