@@ -16,7 +16,6 @@ doctest = false
 workspace = true
 
 [dependencies]
-uv-auth = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
