@@ -16,6 +16,7 @@ use reqwest_retry::{
 use tracing::{debug, trace};
 use url::Url;
 
+use uv_auth::redacted_url;
 use uv_auth::{AuthMiddleware, Indexes};
 use uv_configuration::{KeyringProviderType, TrustedHost};
 use uv_fs::Simplified;
@@ -484,6 +485,7 @@ pub fn is_extended_transient_error(err: &dyn Error) -> bool {
     if let Some((Some(status), Some(url))) = find_source::<reqwest::Error>(&err)
         .map(|request_err| (request_err.status(), request_err.url()))
     {
+        let url = redacted_url(url);
         let status = status
             .canonical_reason()
             .map(|reason| format!(" HTTP {status} {reason} "))

@@ -4,6 +4,7 @@ pub use crate::reference::GitReference;
 
 use thiserror::Error;
 use url::Url;
+use uv_auth::redacted_url;
 
 mod github;
 mod oid;
@@ -151,6 +152,6 @@ impl From<GitUrl> for Url {
 
 impl std::fmt::Display for GitUrl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.repository)
+        write!(f, "{}", redacted_url(&self.repository))
     }
 }

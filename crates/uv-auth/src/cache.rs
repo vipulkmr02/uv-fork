@@ -11,6 +11,7 @@ use url::Url;
 use uv_once_map::OnceMap;
 
 use crate::credentials::{Credentials, Username};
+use crate::redacted_url;
 use crate::Realm;
 
 type FxOnceMap<K, V> = OnceMap<K, V, BuildHasherDefault<FxHasher>>;
@@ -93,8 +94,9 @@ impl CredentialsCache {
     /// cached credentials have a username equal to the provided one — otherwise `None` is returned.
     /// If multiple usernames are used per URL, the realm cache should be queried instead.
     pub(crate) fn get_url(&self, url: &Url, username: &Username) -> Option<Arc<Credentials>> {
+        let url = redacted_url(url);
         let urls = self.urls.read().unwrap();
-        let credentials = urls.get(url);
+        let credentials = urls.get(&url);
         if let Some(credentials) = credentials {
             if username.is_none() || username.as_deref() == credentials.username() {
                 if username.is_some() && credentials.password().is_none() {
