@@ -51,6 +51,8 @@ pub enum Error {
     },
     #[error("Missing expected Python executable at {}", _0.user_display())]
     MissingExecutable(PathBuf),
+    #[error("Missing expected target directory for link at {}", _0.user_display())]
+    MissingLinkTargetDirectory(PathBuf),
     #[error("Failed to create canonical Python executable at {} from {}", to.user_display(), from.user_display())]
     CanonicalizeExecutable {
         from: PathBuf,
@@ -521,33 +523,11 @@ impl ManagedPythonInstallation {
                 return Ok(());
             }
         }
-        let python = self.executable(false);
-        let link_dir = self
-            .path()
-            .with_file_name(symlink_directory_name(self.key.major, self.key.minor));
-
-        match replace_symlink(self.path(), &link_dir) {
-            Ok(()) => {
-                debug!(
-                    "Created link {} -> {}",
-                    link_dir.user_display(),
-                    python.user_display(),
-                );
-            }
-            Err(err) if err.kind() == io::ErrorKind::NotFound => {
-                return Err(Error::MissingExecutable(python.clone()))
-            }
-            Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
-            Err(err) => {
-                return Err(Error::ExecutableLinkDirectory {
-                    from: link_dir,
-                    to: python,
-                    err,
-                })
-            }
-        }
-
-        Ok(())
+        create_symlink_directory(
+            self.key.major,
+            self.key.minor,
+            self.executable(false).as_path(),
+        )
     }
 
     /// Ensure the environment is marked as externally managed with the
@@ -675,6 +655,89 @@ impl ManagedPythonInstallation {
     pub fn sha256(&self) -> Option<&'static str> {
         self.sha256
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct DirectorySymlink {
+    pub symlink: PathBuf,
+    pub target_directory: PathBuf,
+}
+
+impl DirectorySymlink {
+    pub fn is_self_link(&self) -> bool {
+        self.symlink == self.target_directory
+    }
+}
+
+pub fn symlink_directory_from_executable(
+    major: u8,
+    minor: u8,
+    executable: &Path,
+) -> Option<DirectorySymlink> {
+    let symlink_directory_name = symlink_directory_name(major, minor);
+    if let Some(parent) = executable.parent() {
+        #[cfg(unix)]
+        if parent
+            .components()
+            .next_back()
+            .is_some_and(|c| c.as_os_str() == "bin")
+        {
+            if let Some(target_directory) = parent.parent() {
+                let target_directory = target_directory.to_path_buf();
+                let symlink = target_directory.with_file_name(symlink_directory_name);
+                return Some(DirectorySymlink {
+                    symlink,
+                    target_directory,
+                });
+            }
+        }
+        if let Some(target_directory) = parent.parent() {
+            let target_directory = target_directory.to_path_buf();
+            let symlink = target_directory.with_file_name(symlink_directory_name);
+            return Some(DirectorySymlink {
+                symlink,
+                target_directory,
+            });
+        }
+    }
+    None
+}
+
+pub fn create_symlink_directory(major: u8, minor: u8, executable: &Path) -> Result<(), Error> {
+    let Some(directory_symlink) = symlink_directory_from_executable(major, minor, executable)
+    else {
+        return Ok(());
+    };
+    if directory_symlink.is_self_link() {
+        return Ok(());
+    }
+
+    match replace_symlink(
+        directory_symlink.target_directory.as_path(),
+        directory_symlink.symlink.as_path(),
+    ) {
+        Ok(()) => {
+            debug!(
+                "Created link {} -> {}",
+                &directory_symlink.symlink.user_display(),
+                &directory_symlink.target_directory.user_display(),
+            );
+        }
+        Err(err) if err.kind() == io::ErrorKind::NotFound => {
+            return Err(Error::MissingLinkTargetDirectory(
+                directory_symlink.target_directory.clone(),
+            ))
+        }
+        Err(err) if err.kind() == io::ErrorKind::AlreadyExists => {}
+        Err(err) => {
+            return Err(Error::ExecutableLinkDirectory {
+                from: directory_symlink.symlink,
+                to: directory_symlink.target_directory,
+                err,
+            })
+        }
+    }
+    Ok(())
 }
 
 /// Create a link to the managed Python executable.

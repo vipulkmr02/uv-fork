@@ -22,9 +22,10 @@ use uv_configuration::{
 };
 use uv_distribution_types::Requirement;
 use uv_fs::which::is_executable;
-use uv_fs::{PythonExt, Simplified};
+use uv_fs::{symlink_exists, PythonExt, Simplified};
 use uv_installer::{SatisfiesResult, SitePackages};
 use uv_normalize::{DefaultExtras, DefaultGroups, PackageName};
+use uv_python::managed::symlink_directory_from_executable;
 use uv_python::{
     EnvironmentPreference, Interpreter, PyVenvConfiguration, PythonDownloads, PythonEnvironment,
     PythonInstallation, PythonPreference, PythonRequest, PythonVersionFile,
@@ -1254,15 +1255,21 @@ impl RunCommand {
     fn as_command(&self, interpreter: &Interpreter, is_patch_request: bool) -> Command {
         match self {
             Self::Python(args) => {
-                let mut process = if !interpreter.is_standalone()
-                    || is_patch_request
-                    || interpreter.is_virtualenv()
-                {
+                let mut process = if !interpreter.is_standalone() || is_patch_request {
                     Command::new(interpreter.sys_executable())
                 } else {
                     let executable = interpreter
                         .maybe_symlink_path_from_base_python(interpreter.sys_executable())
-                        .expect("symlink path should be derivable from standalone executable path")
+                        .filter(|symlink_path| {
+                            symlink_directory_from_executable(
+                                interpreter.python_major(),
+                                interpreter.python_minor(),
+                                symlink_path.as_path(),
+                            )
+                            .is_some_and(|directory_symlink| {
+                                symlink_exists(directory_symlink.symlink.as_path())
+                            })
+                        })
                         .unwrap_or_else(|| PathBuf::from(interpreter.sys_executable()));
                     Command::new(executable)
                 };

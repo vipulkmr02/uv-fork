@@ -1,5 +1,7 @@
 use std::fmt::Display;
 use std::io;
+#[cfg(windows)]
+use std::os::windows::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 
 use fs2::FileExt;
@@ -174,6 +176,24 @@ pub fn remove_symlink(path: impl AsRef<Path>) -> std::io::Result<()> {
         },
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(err) => Err(err),
+    }
+}
+
+pub fn symlink_exists(path: impl AsRef<Path>) -> bool {
+    #[cfg(unix)]
+    {
+        path.as_ref()
+            .symlink_metadata()
+            .map(|metadata| metadata.file_type().is_symlink())
+            .unwrap_or(false)
+    }
+    #[cfg(windows)]
+    {
+        path.as_ref().symlink_metadata().is_ok_and(|metadata| {
+            // Check file attributes for the reparse point attribute
+            // FILE_ATTRIBUTE_REPARSE_POINT = 0x400
+            (metadata.file_attributes() & 0x400) != 0
+        })
     }
 }
 

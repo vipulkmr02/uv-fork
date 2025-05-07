@@ -10,9 +10,11 @@ use fs_err::File;
 use itertools::Itertools;
 use tracing::debug;
 
-use uv_fs::{cachedir, Simplified, CWD};
+use uv_fs::{cachedir, symlink_exists, Simplified, CWD};
 use uv_pypi_types::Scheme;
-use uv_python::managed::create_bin_link;
+use uv_python::managed::{
+    create_bin_link, create_symlink_directory, symlink_directory_from_executable,
+};
 use uv_python::{Interpreter, VirtualEnvironment};
 use uv_shell::escape_posix_for_single_quotes;
 use uv_version::version;
@@ -144,10 +146,16 @@ pub(crate) fn create(
     // Create a `.gitignore` file to ignore all files in the venv.
     fs::write(location.join(".gitignore"), "*")?;
 
+    let mut using_symlink_path = false;
     let executable_target = if interpreter.is_standalone() {
-        interpreter
-            .maybe_symlink_path_from_base_python(base_python.as_path())?
-            .unwrap_or_else(|| base_python.clone())
+        if let Some(symlink_path) =
+            interpreter.maybe_symlink_path_from_base_python(base_python.as_path())
+        {
+            using_symlink_path = true;
+            symlink_path
+        } else {
+            base_python.clone()
+        }
     } else {
         base_python.clone()
     };
@@ -169,6 +177,23 @@ pub(crate) fn create(
     // Different names for the python interpreter
     fs::create_dir_all(&scripts)?;
     let executable = scripts.join(format!("python{EXE_SUFFIX}"));
+
+    if using_symlink_path {
+        if symlink_directory_from_executable(
+            interpreter.python_major(),
+            interpreter.python_minor(),
+            executable_target.as_path(),
+        )
+        .is_some_and(|directory_symlink| !symlink_exists(directory_symlink.symlink.as_path()))
+        {
+            create_symlink_directory(
+                interpreter.python_major(),
+                interpreter.python_minor(),
+                base_python.as_path(),
+            )
+            .map_err(Error::Python)?;
+        }
+    }
 
     #[cfg(unix)]
     {

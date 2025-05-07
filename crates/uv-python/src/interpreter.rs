@@ -26,7 +26,7 @@ use uv_platform_tags::{Tags, TagsError};
 use uv_pypi_types::{ResolverMarkerEnvironment, Scheme};
 
 use crate::implementation::LenientImplementationName;
-use crate::managed::{symlink_directory_name, ManagedPythonInstallations};
+use crate::managed::{symlink_directory_from_executable, ManagedPythonInstallations};
 use crate::platform::{Arch, Libc, Os};
 use crate::pointer_size::PointerSize;
 use crate::{
@@ -144,54 +144,43 @@ impl Interpreter {
     /// directory.
     ///
     /// If this interpreter is PyPy or GraalPy, return [`None`].
-    pub fn maybe_symlink_path_from_base_python(
-        &self,
-        base_python: &Path,
-    ) -> Result<Option<PathBuf>, io::Error> {
-        let symlink_directory = symlink_directory_name(self.python_major(), self.python_minor());
-        let file_name = base_python
-            .file_name()
-            .expect("base_python to have a file name");
+    pub fn maybe_symlink_path_from_base_python(&self, base_python: &Path) -> Option<PathBuf> {
         if self.markers().implementation_name() == "pypy"
             || self.markers().implementation_name() == "graalpy"
         {
-            return Ok(None);
+            return None;
         }
-        if let Some(parent) = base_python.parent() {
-            #[cfg(unix)]
-            if parent
-                .components()
-                .next_back()
-                .is_some_and(|c| c.as_os_str() == "bin")
-            {
-                if let Some(path) = parent.parent().and_then(Path::parent) {
-                    let path_link = path
-                        .to_path_buf()
-                        .join(symlink_directory)
-                        .join("bin")
-                        .join(file_name);
+        let symlink_directory = symlink_directory_from_executable(
+            self.python_major(),
+            self.python_minor(),
+            base_python,
+        )?;
 
-                    debug!(
-                        "Using directory symlink instead of base Python path: {}",
-                        &path_link.display()
-                    );
-                    return Ok(Some(path_link));
-                }
-            }
-            #[cfg(windows)]
-            if parent.components().next_back().is_some() {
-                if let Some(path) = parent.parent() {
-                    let path_link = path.to_path_buf().join(symlink_directory).join(file_name);
+        let file_name = base_python
+            .file_name()
+            .expect("base_python to have a file name");
 
-                    debug!(
-                        "Using junction instead of base Python path: {}",
-                        &path_link.display()
-                    );
-                    return Ok(Some(path_link));
-                }
-            }
+        #[cfg(unix)]
+        {
+            let path_link = symlink_directory.symlink.join("bin").join(file_name);
+
+            debug!(
+                "Using directory symlink instead of base Python path: {}",
+                &path_link.display()
+            );
+            Some(path_link)
         }
-        Ok(None)
+
+        #[cfg(windows)]
+        {
+            let path_link = symlink_directory.symlink.join(file_name);
+
+            debug!(
+                "Using junction instead of base Python path: {}",
+                &path_link.display()
+            );
+            Some(path_link)
+        }
     }
 
     /// Determine the base Python executable; that is, the Python executable that should be
