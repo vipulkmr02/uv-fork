@@ -489,7 +489,7 @@ pub fn is_extended_transient_error(err: &dyn Error) -> bool {
             .canonical_reason()
             .map(|reason| format!(" HTTP {status} {reason} "))
             .unwrap_or_else(|| format!(" HTTP {status} "));
-        trace!("Considering retry of {status} for {url}", redacted_url(url));
+        trace!("Considering retry of {status} for {url}");
     } else {
         trace!("Considering retry of error: {err:?}");
     }
