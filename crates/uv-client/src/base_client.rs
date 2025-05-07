@@ -485,12 +485,11 @@ pub fn is_extended_transient_error(err: &dyn Error) -> bool {
     if let Some((Some(status), Some(url))) = find_source::<reqwest::Error>(&err)
         .map(|request_err| (request_err.status(), request_err.url()))
     {
-        let url = redacted_url(url);
         let status = status
             .canonical_reason()
             .map(|reason| format!(" HTTP {status} {reason} "))
             .unwrap_or_else(|| format!(" HTTP {status} "));
-        trace!("Considering retry of {status} for {url}");
+        trace!("Considering retry of {status} for {url}", redacted_url(url));
     } else {
         trace!("Considering retry of error: {err:?}");
     }
